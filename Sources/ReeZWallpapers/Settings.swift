@@ -56,7 +56,8 @@ enum Settings {
         set { d.set(newValue, forKey: "savedDesktopImages") }
     }
 
-    /// ⌃⌘Q (Sperr-Kürzel von macOS) zusätzlich für „Sperren – Wallpaper läuft weiter“ belegen.
+    /// ⌃⌘Q (Sperr-Kürzel von macOS, auch die Sperrtaste mancher Tastaturen) für „Sperren – Wallpaper läuft weiter“
+    /// übernehmen. Standardmäßig aus: das ändert, was eine Sperrtaste tut.
     static var takeOverSystemLockShortcut: Bool {
         get { d.bool(forKey: "takeOverSystemLockShortcut") }
         set { d.set(newValue, forKey: "takeOverSystemLockShortcut") }

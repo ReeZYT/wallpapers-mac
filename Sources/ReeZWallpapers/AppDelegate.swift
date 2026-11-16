@@ -1,5 +1,4 @@
 import AppKit
-import Carbon.HIToolbox
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -8,8 +7,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var mouse = MouseForwarder(displays: displays)
     private var menu: MenuController?
     private var syncTimer: Timer?
-    private var lockHotkey: GlobalHotkey?
-    private var systemLockHotkey: GlobalHotkey?
     private var observers: [NSObjectProtocol] = []
     /// Gründe, aus denen gerade niemand das Wallpaper sehen kann.
     private var asleep = false
@@ -32,17 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mouse.setEnabled(Settings.mouseEnabled)
         displays.media.setEnabled(Settings.mediaEnabled)
         SaverInstaller.updateIfNeeded()
-        // ⌃⌥⌘L: Bildschirmschoner starten, also „sperren und das Wallpaper läuft weiter“
-        lockHotkey = GlobalHotkey(id: 1, keyCode: GlobalHotkey.lockKeyCode, modifiers: GlobalHotkey.lockModifiers) {
-            SaverInstaller.start()
-        }
-        // Versuch: das Sperr-Kürzel von macOS (⌃⌘Q) selbst belegen. Gewinnt macOS, ändert sich nichts.
-        if Settings.takeOverSystemLockShortcut {
-            systemLockHotkey = GlobalHotkey(id: 2, keyCode: UInt32(kVK_ANSI_Q), modifiers: UInt32(controlKey | cmdKey)) {
-                SaverInstaller.start()
-            }
-            NSLog("ReeZ Wallpapers: Kürzel ctrl+cmd+Q %@", systemLockHotkey == nil ? "nicht registriert" : "registriert")
-        }
+        LockShortcuts.shared.apply()
         observeSystem()
         observers.append(Diagnostics.serve(displays))
 

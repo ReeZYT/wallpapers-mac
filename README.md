@@ -131,9 +131,9 @@ standardmäßig aus) trägt dort je Monitor ein Standbild des laufenden Wallpape
 
 ### Bewegt beim Sperren: der Bildschirmschoner
 
-Ein Versuch am 16.11.2026 (macOS 26.6) hat gezeigt: Über dem Sperrbildschirm zeigt macOS keine Fenster anderer
-Programme, auf keiner Fensterebene, und ein Bildschirmschoner, der erst nach dem Sperren gestartet wird, erscheint
-auch nicht. Bewegt ist dort nur Apples eigener Hintergrund.
+Versuche am 16.11.2026 (macOS 26.6) haben gezeigt: Über dem Sperrbildschirm zeigt macOS keine Fenster anderer
+Programme, auf keiner Fensterebene. Ein Bildschirmschoner, der erst nach einer direkten Sperre gestartet wird, gilt
+für macOS zwar als laufend, wird aber weder geladen noch gezeigt. Bewegt ist dort nur Apples eigener Hintergrund.
 
 Ein Bildschirmschoner, der *vor* der Sperre läuft, bleibt dagegen sichtbar, bis jemand Maus oder Tastatur anfasst.
 Deshalb liegt in der App ein Bildschirmschoner (`Sources/ReeZWallpapersSaver`, Bündel unter
@@ -143,12 +143,22 @@ Deshalb liegt in der App ein Bildschirmschoner (`Sources/ReeZWallpapersSaver`, B
   die nur der Benutzer setzen kann: unter Bildschirmschoner „ReeZ Wallpapers“ wählen, unter Sperrbildschirm
   „Passwort erforderlich nach Beginn des Bildschirmschoners …“ auf „Sofort“.
 - Menü → „Sperren – Wallpaper läuft weiter“ (⌃⌥⌘L, systemweit) startet den Bildschirmschoner. Mit „Sofort“ ist der Mac
-  damit gesperrt und das Wallpaper läuft weiter. Bei ctrl + cmd + Q zeigt macOS seinen eigenen Sperrbildschirm.
+  damit gesperrt und das Wallpaper läuft weiter.
+- Menü → „Sperrtaste (ctrl + cmd + Q) macht das auch“ (standardmäßig aus) übernimmt das Sperr-Kürzel von macOS, das
+  auch die Sperrtaste mancher Tastaturen schickt: Ein eigenes Kürzel darauf hat Vorrang vor dem System. Eine
+  Sperrtaste muss immer sperren, deshalb fragt die App bei jedem Druck `sysadminctl -screenLock status` ab und löst
+  ohne „Sofort“ oder ohne eingerichteten Bildschirmschoner die echte Sperre aus (`SACLockScreenImmediate`, intern).
+- Die Touch-ID-Taste lässt sich nicht abfangen; dort zeigt macOS immer seinen Sperrbildschirm.
+- Solange der Bildschirmschoner läuft, ruhen die Fenster der App.
 - Der Bildschirmschoner läuft in der Sandbox von macOS (`legacyScreenSaver`), darf aber die ganze Platte lesen. Er
   liest `saver.json` (Auswahl je Monitor, Pfade; die App schreibt sie bei jeder Änderung) und die Projektordner direkt
   aus `~/Library/Application Support/ReeZ Wallpapers`. Seine Ansichten sind dieselben wie in der App: die gemeinsamen
   Quelldateien sind per Symlink in das zweite SwiftPM-Ziel eingehängt.
-- Titel und Cover, Maus und Pausen gibt es im Bildschirmschoner nicht. Was er tut, steht im Systemprotokoll:
+- WebKit hält Seiten in verdeckten Fenstern an, und die Fenster eines Bildschirmschoners gelten ihm als verdeckt
+  (macOS zeigt sie über einen eigenen Prozess an). Im Bildschirmschoner ist diese Erkennung deshalb abgeschaltet;
+  sonst sieht man nur die Hintergrundfarbe der Seite.
+- Titel und Cover, Maus und Pausen gibt es im Bildschirmschoner nicht. Was er und die Kürzel tun, steht im
+  Systemprotokoll (`subsystem == "cc.reez.wallpapers"` für die App):
   `/usr/bin/log show --last 5m --predicate 'subsystem == "cc.reez.wallpapers.saver"'`.
 
 Was als Standbild herauskäme, zeigt `--diagnose <ordner> --force`: Es legt die Bilder in den Ordner, ohne das

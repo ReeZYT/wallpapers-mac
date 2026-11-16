@@ -109,6 +109,17 @@ final class MenuController: NSObject, NSMenuDelegate {
             lock.keyEquivalent = "l"
             lock.keyEquivalentModifierMask = [.control, .option, .command]
             menu.addItem(lock)
+            if SaverInstaller.isInstalled {
+                if SystemLock.isAvailable {
+                    menu.addItem(ActionItem(L("Lock key (⌃⌘Q) does this too", "Sperrtaste (ctrl + cmd + Q) macht das auch"), state: Settings.takeOverSystemLockShortcut ? .on : .off) {
+                        Settings.takeOverSystemLockShortcut.toggle()
+                        LockShortcuts.shared.apply()
+                    })
+                }
+                if !SystemLock.locksWithScreenSaver(maxAge: 30) {
+                    menu.addItem(info(L("macOS does not lock right away: set the password to “Immediately”", "macOS sperrt dabei nicht sofort: Passwort auf „Sofort“ stellen")))
+                }
+            }
             menu.addItem(ActionItem(SaverInstaller.isInstalled
                 ? L("Screen saver settings…", "Bildschirmschoner-Einstellungen …")
                 : L("Set up the screen saver…", "Bildschirmschoner einrichten …")) { [weak self] in self?.setUpSaver() })
@@ -253,8 +264,8 @@ final class MenuController: NSObject, NSMenuDelegate {
         let alert = NSAlert()
         alert.messageText = L("Two settings in macOS", "Zwei Einstellungen in macOS")
         alert.informativeText = L(
-            "1. Screen Saver: choose “ReeZ Wallpapers” (under Other).\n2. Lock Screen: set “Require password after screen saver begins or display is turned off” to Immediately.\n\nAfter that, “Lock – wallpaper keeps playing” (⌃⌥⌘L) locks your Mac while the wallpaper keeps moving until you touch the mouse or keyboard.",
-            "1. Bildschirmschoner: „ReeZ Wallpapers“ wählen (unter „Andere“).\n2. Sperrbildschirm: „Passwort erforderlich nach Beginn des Bildschirmschoners oder Ausschalten des Displays“ auf „Sofort“ stellen.\n\nDanach sperrt „Sperren – Wallpaper läuft weiter“ (⌃⌥⌘L) den Mac, und das Wallpaper bewegt sich weiter, bis du Maus oder Tastatur anfasst."
+            "1. Screen Saver: choose “ReeZ Wallpapers” (under Other).\n2. Lock Screen: set “Require password after screen saver begins or display is turned off” to Immediately.\n\nAfter that, “Lock – wallpaper keeps playing” (⌃⌥⌘L) locks your Mac while the wallpaper keeps moving until you touch the mouse or keyboard. The menu can also hand the normal lock shortcut ⌃⌘Q to it. The Touch ID button always shows the macOS lock screen.",
+            "1. Bildschirmschoner: „ReeZ Wallpapers“ wählen (unter „Andere“).\n2. Sperrbildschirm: „Passwort erforderlich nach Beginn des Bildschirmschoners oder Ausschalten des Displays“ auf „Sofort“ stellen.\n\nDanach sperrt „Sperren – Wallpaper läuft weiter“ (⌃⌥⌘L) den Mac, und das Wallpaper bewegt sich weiter, bis du Maus oder Tastatur anfasst. Im Menü lässt sich auch das normale Sperr-Kürzel ⌃⌘Q dafür übernehmen. Die Touch-ID-Taste zeigt immer den Sperrbildschirm von macOS."
         )
         alert.addButton(withTitle: L("Open Screen Saver settings", "Bildschirmschoner-Einstellungen öffnen"))
         alert.addButton(withTitle: L("Later", "Später"))

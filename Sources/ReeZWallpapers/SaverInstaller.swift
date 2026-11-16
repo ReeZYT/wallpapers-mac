@@ -1,5 +1,9 @@
 import AppKit
 import Carbon.HIToolbox
+import OSLog
+
+/// Nachzulesen mit: /usr/bin/log show --last 5m --predicate 'subsystem == "cc.reez.wallpapers"'
+let appLog = Logger(subsystem: "cc.reez.wallpapers", category: "app")
 
 /// Richtet den Bildschirmschoner ein, der in der App liegt, und startet ihn.
 ///
@@ -75,16 +79,90 @@ enum SaverInstaller {
     }
 }
 
+/// Die Sperre von macOS selbst.
+enum SystemLock {
+    private typealias LockFunction = @convention(c) () -> Int32
+
+    private static let lockFunction: LockFunction? = {
+        guard let handle = dlopen("/System/Library/PrivateFrameworks/login.framework/Versions/Current/login", RTLD_LAZY),
+              let symbol = dlsym(handle, "SACLockScreenImmediate") else { return nil }
+        return unsafeBitCast(symbol, to: LockFunction.self)
+    }()
+
+    static var isAvailable: Bool { lockFunction != nil }
+
+    /// Sperrt sofort, wie ctrl + cmd + Q. (Interne Funktion von macOS; nur als Rückfall für die übernommene Sperrtaste.)
+    static func lockNow() {
+        _ = lockFunction?()
+    }
+
+    private static var cached: (value: Bool, at: Date)?
+
+    /// Sperrt macOS gleich mit dem Start des Bildschirmschoners? Das ist die Systemeinstellung „Passwort erforderlich
+    /// nach Beginn des Bildschirmschoners oder Ausschalten des Displays: Sofort“.
+    static func locksWithScreenSaver(maxAge: TimeInterval = 0) -> Bool {
+        if let cached, Date().timeIntervalSince(cached.at) < maxAge { return cached.value }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/sysadminctl")
+        process.arguments = ["-screenLock", "status"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        var value = false
+        if (try? process.run()) != nil {
+            let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            process.waitUntilExit()
+            value = output.contains("delay is immediate")
+        }
+        cached = (value, Date())
+        return value
+    }
+}
+
+/// Die Tastenkürzel zum Sperren mit weiterlaufendem Wallpaper.
+@MainActor
+final class LockShortcuts {
+    static let shared = LockShortcuts()
+    private var own: GlobalHotkey?
+    private var system: GlobalHotkey?
+
+    /// Stellt die Kürzel so ein, wie die Einstellungen es sagen.
+    func apply() {
+        if own == nil {
+            // ⌃⌥⌘L
+            own = GlobalHotkey(id: 1, keyCode: UInt32(kVK_ANSI_L), modifiers: UInt32(controlKey | optionKey | cmdKey)) {
+                appLog.notice("Sperren über ctrl+alt+cmd+L")
+                SaverInstaller.start()
+            }
+        }
+        // ⌃⌘Q ist das Sperr-Kürzel von macOS (auch die Sperrtaste mancher Tastaturen schickt es). Ein eigenes Kürzel
+        // darauf hat Vorrang. Nur übernehmen, wenn sich im Zweifel auch echt sperren lässt.
+        if Settings.takeOverSystemLockShortcut, SystemLock.isAvailable {
+            if system == nil {
+                system = GlobalHotkey(id: 2, keyCode: UInt32(kVK_ANSI_Q), modifiers: UInt32(controlKey | cmdKey)) {
+                    // Eine Sperrtaste muss immer sperren: ohne „Passwort sofort“ oder ohne Bildschirmschoner die echte Sperre
+                    if SaverInstaller.isInstalled, SystemLock.locksWithScreenSaver() {
+                        appLog.notice("Sperren über ctrl+cmd+Q: Bildschirmschoner")
+                        SaverInstaller.start()
+                    } else {
+                        appLog.notice("Sperren über ctrl+cmd+Q: Sperre von macOS")
+                        SystemLock.lockNow()
+                    }
+                }
+                appLog.notice("ctrl+cmd+Q übernommen: \(self.system != nil, privacy: .public)")
+            }
+        } else {
+            system = nil
+        }
+    }
+}
+
 /// Ein systemweites Tastenkürzel (Carbon-Hotkey: braucht keine Freigabe).
 final class GlobalHotkey {
     private var hotKey: EventHotKeyRef?
     private var handler: EventHandlerRef?
     private let action: () -> Void
     private let id: UInt32
-
-    /// ⌃⌥⌘L
-    static let lockKeyCode = UInt32(kVK_ANSI_L)
-    static let lockModifiers = UInt32(controlKey | optionKey | cmdKey)
 
     init?(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
         self.action = action
