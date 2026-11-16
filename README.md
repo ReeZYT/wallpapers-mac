@@ -1,5 +1,21 @@
 # ReeZ Wallpapers (macOS)
 
+A small menu bar app that plays the wallpapers from [wallpapers.reez.cc](https://wallpapers.reez.cc) behind your
+desktop icons, on every display of your Mac at once. Wallpaper Engine doesn't run on macOS; this fills the gap for
+its web and video wallpapers.
+
+- **Download and install:** https://wallpapers.reez.cc/mac/ (ready-made app, Apple silicon and Intel, macOS 13 or later)
+- **Build it yourself:** `scripts/build-app.sh` builds `build/ReeZ Wallpapers.app` with SwiftPM. The Xcode command line
+  tools are enough, there are no dependencies.
+- **What it does:** one window per display at desktop level, wallpapers synced from the site and played from disk, mouse
+  and clicks passed on, the current track from Spotify or Apple Music, and a screen saver that keeps the wallpaper
+  moving when you lock from the app.
+
+The app is not notarized by Apple, so macOS asks you to confirm the first start under System Settings → Privacy &
+Security. The rest of this file is the developer documentation, in German.
+
+---
+
 Zeigt die Wallpaper von [wallpapers.reez.cc](https://wallpapers.reez.cc) als Schreibtischhintergrund auf allen
 Monitoren eines Macs gleichzeitig. Eine App, ein Symbol in der Menüleiste, kein Dock-Symbol. Gedacht als Ersatz für
 Wallpaper Engine, das es für macOS nicht gibt.
@@ -19,7 +35,7 @@ eingestellten Macs Deutsch (`L10n.swift`: jeder Text steht als `L("English", "De
 
 ## Weitergeben
 
-Die App steht als Download auf https://wallpapers.reez.cc/mac/ (Repo `ReeZYT/wallpapers`, lokal `Privat/lab`).
+Die App steht als Download auf https://wallpapers.reez.cc/mac/. Die Seite hat ihr eigenes, nicht öffentliches Repository.
 
 ```bash
 scripts/package.sh
@@ -118,7 +134,9 @@ Zum Testen ohne Player genügt eine nachgestellte Mitteilung, z. B. per Swift-Sk
 Den Sperrbildschirm zeichnet macOS selbst über allen Fenstern; fremde Apps kommen dort nicht hin, und bewegte
 Hintergründe können nur Apples eigene Erweiterungen (`WallpaperExtensionKit` ist privat). Er zeigt aber immer das
 macOS-Hintergrundbild des jeweiligen Monitors. Der Schalter „Sperrbildschirm angleichen“ (`LockScreenMatcher.swift`,
-standardmäßig aus) trägt dort je Monitor ein Standbild des laufenden Wallpapers ein:
+standardmäßig aus) trägt dort je Monitor ein Standbild des laufenden Wallpapers ein. Das Erzeugen der Standbilder ist
+geprüft, das Eintragen und Zurückstellen noch nicht an einem echten System: der Schalter erscheint deshalb nur, wenn
+das Menü mit gedrückter Wahltaste (⌥) geöffnet wird.
 
 - Web-Wallpaper: Schnappschuss der Seite in voller Auflösung. Seiten mit 3D-Transformationen bildet
   `WKWebView.takeSnapshot` falsch ab; sie bekommen das Titelbild der Seite (`site/<slug>/cover.*`, wird beim Abgleich

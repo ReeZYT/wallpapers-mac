@@ -2,7 +2,7 @@
 # Packt die App als ZIP für den Download auf wallpapers.reez.cc und gibt die Angaben für die Seite aus.
 #   scripts/package.sh [zielordner]    Standard: build/
 # Die Seite erwartet die Datei unter public/downloads/ReeZ-Wallpapers-mac.zip und die Angaben in src/lib/mac-app.json
-# (Repo ReeZYT/wallpapers). Die Versionsnummer steht in Resources/Info.plist; die laufenden Apps vergleichen sie mit
+# (Repository der Seite). Die Versionsnummer steht in Resources/Info.plist; die laufenden Apps vergleichen sie mit
 # /mac/version.json der Seite und zeigen im Menü einen Update-Hinweis.
 set -euo pipefail
 cd "$(dirname "$0")/.."

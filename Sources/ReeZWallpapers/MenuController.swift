@@ -99,10 +99,14 @@ final class MenuController: NSObject, NSMenuDelegate {
             menu.addItem(info("\(symbol)  \(track.title)" + (track.artist.isEmpty ? "" : " – \(track.artist)")))
         }
 
-        menu.addItem(ActionItem(L("Match the lock screen (still image as macOS wallpaper)", "Sperrbildschirm angleichen (Standbild als macOS-Hintergrund)"), state: Settings.lockScreenMatch ? .on : .off) { [displays] in
-            Settings.lockScreenMatch.toggle()
-            displays.refresh()
-        })
+        // Noch nicht an einem echten System erprobt (ändert das macOS-Hintergrundbild): nur sichtbar, wenn schon
+        // eingeschaltet oder das Menü mit gedrückter Wahltaste geöffnet wird
+        if Settings.lockScreenMatch || NSEvent.modifierFlags.contains(.option) {
+            menu.addItem(ActionItem(L("Match the lock screen (still image as macOS wallpaper)", "Sperrbildschirm angleichen (Standbild als macOS-Hintergrund)"), state: Settings.lockScreenMatch ? .on : .off) { [displays] in
+                Settings.lockScreenMatch.toggle()
+                displays.refresh()
+            })
+        }
 
         if SaverInstaller.isAvailable {
             let lock = ActionItem(L("Lock – wallpaper keeps playing", "Sperren – Wallpaper läuft weiter")) { SaverInstaller.start() }
