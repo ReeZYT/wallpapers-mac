@@ -82,8 +82,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Läuft der Bildschirmschoner, zeichnet er die Wallpaper selbst: die eigenen Fenster dahinter ruhen so lange
         on(distributed, Notification.Name("com.apple.screensaver.didstart")) { $0.saverRunning = true; $0.updateSystemPause() }
         on(distributed, Notification.Name("com.apple.screensaver.didstop")) { $0.saverRunning = false; $0.updateSystemPause() }
-        on(distributed, Notification.Name("com.apple.screenIsLocked")) { $0.locked = true; $0.updateSystemPause() }
+        on(distributed, Notification.Name("com.apple.screenIsLocked")) { $0.locked = true; $0.updateSystemPause(); $0.startSaverAfterLock() }
         on(distributed, Notification.Name("com.apple.screenIsUnlocked")) { $0.locked = false; $0.updateSystemPause() }
+    }
+
+    /// Nach einer normalen Sperre (ctrl + cmd + Q, Touch-ID-Taste) zeigt macOS seinen Sperrbildschirm. Ein danach
+    /// gestarteter Bildschirmschoner legt sich darüber, bis jemand Maus oder Tastatur anfasst: das Wallpaper läuft
+    /// also auch dann weiter. Nicht, wenn die Monitore schlafen oder der Mac gerade erst aufwacht.
+    private func startSaverAfterLock() {
+        guard Settings.saverOnLock, SaverInstaller.isInstalled else { return }
+        let lockedAt = Date()
+        // Kurz warten, bis die Tasten der Sperre losgelassen sind; sie würden den Bildschirmschoner gleich beenden
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self, self.locked, !self.asleep, !self.sessionInactive,
+                  // Hat der Mac dazwischen geschlafen, kommt dieser Aufruf erst beim Aufwachen: dann nicht nachholen
+                  Date().timeIntervalSince(lockedAt) < 4,
+                  CGDisplayIsAsleep(CGMainDisplayID()) == 0,
+                  !SaverInstaller.isRunning else { return }
+            SaverInstaller.start(after: 0)
+        }
     }
 
     private func updateSystemPause() {

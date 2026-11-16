@@ -60,11 +60,16 @@ enum SaverInstaller {
         }
     }
 
+    /// Läuft der Bildschirmschoner von macOS gerade?
+    static var isRunning: Bool {
+        !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.ScreenSaver.Engine").isEmpty
+    }
+
     /// Startet den in macOS gewählten Bildschirmschoner.
-    static func start() {
+    /// - Parameter delay: Kurz warten: das Loslassen der Tasten des Kürzels würde ihn sonst gleich wieder beenden.
+    static func start(after delay: TimeInterval = 0.5) {
         let engine = URL(fileURLWithPath: "/System/Library/CoreServices/ScreenSaverEngine.app")
-        // Kurz warten: das Loslassen der Tasten des Kürzels würde ihn sonst gleich wieder beenden
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             NSWorkspace.shared.openApplication(at: engine, configuration: NSWorkspace.OpenConfiguration())
         }
     }

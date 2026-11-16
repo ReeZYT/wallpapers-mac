@@ -109,6 +109,11 @@ final class MenuController: NSObject, NSMenuDelegate {
             lock.keyEquivalent = "l"
             lock.keyEquivalentModifierMask = [.control, .option, .command]
             menu.addItem(lock)
+            if SaverInstaller.isInstalled {
+                menu.addItem(ActionItem(L("Also keep playing after a normal lock", "Auch nach normalem Sperren weiterlaufen"), state: Settings.saverOnLock ? .on : .off) {
+                    Settings.saverOnLock.toggle()
+                })
+            }
             menu.addItem(ActionItem(SaverInstaller.isInstalled
                 ? L("Screen saver settings…", "Bildschirmschoner-Einstellungen …")
                 : L("Set up the screen saver…", "Bildschirmschoner einrichten …")) { [weak self] in self?.setUpSaver() })
