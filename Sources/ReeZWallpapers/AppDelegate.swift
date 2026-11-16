@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var mouse = MouseForwarder(displays: displays)
     private var menu: MenuController?
     private var syncTimer: Timer?
+    private var lockHotkey: GlobalHotkey?
     private var observers: [NSObjectProtocol] = []
     /// Gründe, aus denen gerade niemand das Wallpaper sehen kann.
     private var asleep = false
@@ -27,6 +28,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         libraryChanged()
         mouse.setEnabled(Settings.mouseEnabled)
         displays.media.setEnabled(Settings.mediaEnabled)
+        SaverInstaller.updateIfNeeded()
+        // ⌃⌥⌘L: Bildschirmschoner starten, also „sperren und das Wallpaper läuft weiter“
+        lockHotkey = GlobalHotkey(keyCode: GlobalHotkey.lockKeyCode, modifiers: GlobalHotkey.lockModifiers) {
+            SaverInstaller.start()
+        }
         observeSystem()
         observers.append(Diagnostics.serve(displays))
 

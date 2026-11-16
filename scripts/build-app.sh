@@ -20,6 +20,13 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 if [ -f Resources/AppIcon.icns ]; then
   cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 fi
+
+# Der Bildschirmschoner liegt in der App und wird von dort nach ~/Library/Screen Savers eingerichtet
+SAVER="$APP/Contents/Resources/$NAME.saver"
+mkdir -p "$SAVER/Contents/MacOS"
+cp "$(dirname "$BIN")/libReeZWallpapersSaver.dylib" "$SAVER/Contents/MacOS/ReeZWallpapersSaver"
+cp Resources/Saver-Info.plist "$SAVER/Contents/Info.plist"
+codesign --force --sign - "$SAVER"
 # Ohne Entwicklerzertifikat: Ad-hoc-Signatur, reicht für den eigenen Mac
 codesign --force --sign - "$APP"
 echo "Gebaut: $APP"

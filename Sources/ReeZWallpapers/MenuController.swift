@@ -104,6 +104,16 @@ final class MenuController: NSObject, NSMenuDelegate {
             displays.refresh()
         })
 
+        if SaverInstaller.isAvailable {
+            let lock = ActionItem(L("Lock – wallpaper keeps playing", "Sperren – Wallpaper läuft weiter")) { SaverInstaller.start() }
+            lock.keyEquivalent = "l"
+            lock.keyEquivalentModifierMask = [.control, .option, .command]
+            menu.addItem(lock)
+            menu.addItem(ActionItem(SaverInstaller.isInstalled
+                ? L("Screen saver settings…", "Bildschirmschoner-Einstellungen …")
+                : L("Set up the screen saver…", "Bildschirmschoner einrichten …")) { [weak self] in self?.setUpSaver() })
+        }
+
         menu.addItem(.separator())
         menu.addItem(info(syncStatus()))
         menu.addItem(ActionItem(L("Check wallpapers.reez.cc now", "Jetzt mit wallpapers.reez.cc abgleichen")) { [library] in
@@ -230,6 +240,26 @@ final class MenuController: NSObject, NSMenuDelegate {
             } catch {
                 self?.alert(L("Wallpaper not added", "Wallpaper nicht hinzugefügt"), error.localizedDescription)
             }
+        }
+    }
+
+    private func setUpSaver() {
+        do {
+            if !SaverInstaller.isInstalled { try SaverInstaller.install() }
+        } catch {
+            return alert(L("Screen saver not set up", "Bildschirmschoner nicht eingerichtet"), error.localizedDescription)
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = L("Two settings in macOS", "Zwei Einstellungen in macOS")
+        alert.informativeText = L(
+            "1. Screen Saver: choose “ReeZ Wallpapers” (under Other).\n2. Lock Screen: set “Require password after screen saver begins or display is turned off” to Immediately.\n\nAfter that, “Lock – wallpaper keeps playing” (⌃⌥⌘L) locks your Mac while the wallpaper keeps moving until you touch the mouse or keyboard.",
+            "1. Bildschirmschoner: „ReeZ Wallpapers“ wählen (unter „Andere“).\n2. Sperrbildschirm: „Passwort erforderlich nach Beginn des Bildschirmschoners oder Ausschalten des Displays“ auf „Sofort“ stellen.\n\nDanach sperrt „Sperren – Wallpaper läuft weiter“ (⌃⌥⌘L) den Mac, und das Wallpaper bewegt sich weiter, bis du Maus oder Tastatur anfasst."
+        )
+        alert.addButton(withTitle: L("Open Screen Saver settings", "Bildschirmschoner-Einstellungen öffnen"))
+        alert.addButton(withTitle: L("Later", "Später"))
+        if alert.runModal() == .alertFirstButtonReturn {
+            SaverInstaller.openSettings()
         }
     }
 

@@ -129,6 +129,28 @@ standardmäßig aus) trägt dort je Monitor ein Standbild des laufenden Wallpape
   dabei als sein Standbild zurück und muss in den Systemeinstellungen neu gewählt werden).
 - macOS merkt sich das Hintergrundbild je Space; die App trägt es deshalb bei jedem Space-Wechsel nach.
 
+### Bewegt beim Sperren: der Bildschirmschoner
+
+Ein Versuch am 16.11.2026 (macOS 26.6) hat gezeigt: Über dem Sperrbildschirm zeigt macOS keine Fenster anderer
+Programme, auf keiner Fensterebene, und ein Bildschirmschoner, der erst nach dem Sperren gestartet wird, erscheint
+auch nicht. Bewegt ist dort nur Apples eigener Hintergrund.
+
+Ein Bildschirmschoner, der *vor* der Sperre läuft, bleibt dagegen sichtbar, bis jemand Maus oder Tastatur anfasst.
+Deshalb liegt in der App ein Bildschirmschoner (`Sources/ReeZWallpapersSaver`, Bündel unter
+`Contents/Resources/ReeZ Wallpapers.saver`), der auf jedem Monitor dasselbe Wallpaper spielt wie die App:
+
+- Menü → „Bildschirmschoner einrichten …“ kopiert ihn nach `~/Library/Screen Savers` und nennt die zwei Einstellungen,
+  die nur der Benutzer setzen kann: unter Bildschirmschoner „ReeZ Wallpapers“ wählen, unter Sperrbildschirm
+  „Passwort erforderlich nach Beginn des Bildschirmschoners …“ auf „Sofort“.
+- Menü → „Sperren – Wallpaper läuft weiter“ (⌃⌥⌘L, systemweit) startet den Bildschirmschoner. Mit „Sofort“ ist der Mac
+  damit gesperrt und das Wallpaper läuft weiter. Bei ctrl + cmd + Q zeigt macOS seinen eigenen Sperrbildschirm.
+- Der Bildschirmschoner läuft in der Sandbox von macOS (`legacyScreenSaver`), darf aber die ganze Platte lesen. Er
+  liest `saver.json` (Auswahl je Monitor, Pfade; die App schreibt sie bei jeder Änderung) und die Projektordner direkt
+  aus `~/Library/Application Support/ReeZ Wallpapers`. Seine Ansichten sind dieselben wie in der App: die gemeinsamen
+  Quelldateien sind per Symlink in das zweite SwiftPM-Ziel eingehängt.
+- Titel und Cover, Maus und Pausen gibt es im Bildschirmschoner nicht. Was er tut, steht im Systemprotokoll:
+  `log show --last 5m --predicate 'eventMessage CONTAINS "ReeZSaver"'`.
+
 Was als Standbild herauskäme, zeigt `--diagnose <ordner> --force`: Es legt die Bilder in den Ordner, ohne das
 Hintergrundbild anzufassen, und nennt je Monitor das gerade eingestellte macOS-Bild.
 
@@ -160,4 +182,4 @@ unter Entwickler → ReeZ Wallpapers im Web Inspector öffnen.
 - Laufender Titel aus anderen Quellen als Spotify und Apple Music.
 - Eine Oberfläche für die Einstellungen der Wallpaper.
 - Rechtsklick, Mausrad und Tastatur werden nicht weitergegeben.
-- Bewegter Sperrbildschirm: geht nur als Bildschirmschoner (eigenes `.saver`-Bündel), noch nicht gebaut.
+- Titel und Cover im Bildschirmschoner.

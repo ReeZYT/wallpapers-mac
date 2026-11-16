@@ -6,14 +6,6 @@ struct DisplayInfo {
     let screen: NSScreen
 }
 
-extension NSScreen {
-    var displayUUID: String? {
-        guard let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
-              let uuid = CGDisplayCreateUUIDFromDisplayID(number.uint32Value)?.takeRetainedValue() else { return nil }
-        return CFUUIDCreateString(nil, uuid) as String
-    }
-}
-
 /// Ein randloses Fenster auf der Ebene des Schreibtischhintergrunds: über dem macOS-Hintergrundbild,
 /// unter den Desktop-Symbolen des Finders und unter allen normalen Fenstern.
 final class WallpaperWindow: NSWindow {
@@ -152,6 +144,24 @@ final class DisplayManager {
             applyPause(to: window)
         }
         lockScreen.update(current.map { LockScreenMatcher.Target(display: $0, window: windows[$0.uuid]) })
+        writeSaverConfig(current)
+    }
+
+    /// Stand für den Bildschirmschoner ablegen (siehe SaverConfig).
+    private func writeSaverConfig(_ current: [DisplayInfo]) {
+        var config = SaverConfig()
+        config.fps = Settings.fpsLimit
+        config.fallback = Settings.defaultWallpaper
+        for display in current {
+            if let id = selection(for: display.uuid) { config.displays[display.uuid] = id }
+        }
+        for wallpaper in library.wallpapers {
+            config.wallpapers[wallpaper.id] = SaverConfig.Entry(
+                title: wallpaper.title, kind: wallpaper.kind.rawValue, root: wallpaper.root.path, entry: wallpaper.entry,
+                revision: wallpaper.revision, isLocal: wallpaper.isLocal
+            )
+        }
+        config.write()
     }
 
     private func makeContent(_ wallpaper: Wallpaper, size: NSSize) -> WallpaperContent {
