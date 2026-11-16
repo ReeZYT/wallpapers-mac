@@ -5,6 +5,52 @@ import Foundation
 /// Die App schreibt das bei jeder Änderung nach ~/Library/Application Support/ReeZ Wallpapers/saver.json. Der
 /// Bildschirmschoner läuft in der Sandbox von macOS (legacyScreenSaver), darf aber die ganze Platte lesen und holt
 /// sich Datei und Projektordner von dort. Schreiben kann er nichts.
+/// Wert einer Wallpaper-Einstellung in einer Form, die sich als JSON ablegen lässt.
+enum PropertyValue: Codable, Equatable {
+    case bool(Bool)
+    case number(Double)
+    case string(String)
+
+    init?(_ value: Any) {
+        if let number = value as? NSNumber {
+            // Wahrheitswerte sind in Cocoa auch Zahlen: am Typ unterscheiden
+            self = CFGetTypeID(number) == CFBooleanGetTypeID() ? .bool(number.boolValue) : .number(number.doubleValue)
+        } else if let text = value as? String {
+            self = .string(text)
+        } else {
+            return nil
+        }
+    }
+
+    var any: Any {
+        switch self {
+        case .bool(let value): return value
+        case .number(let value): return value == value.rounded() ? Int(value) as Any : value as Any
+        case .string(let value): return value
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Bool.self) {
+            self = .bool(value)
+        } else if let value = try? container.decode(Double.self) {
+            self = .number(value)
+        } else {
+            self = .string(try container.decode(String.self))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .bool(let value): try container.encode(value)
+        case .number(let value): try container.encode(value)
+        case .string(let value): try container.encode(value)
+        }
+    }
+}
+
 struct SaverConfig: Codable, Equatable {
     struct Entry: Codable, Equatable {
         let title: String
@@ -21,6 +67,8 @@ struct SaverConfig: Codable, Equatable {
     /// Display-UUID → Wallpaper-ID.
     var displays: [String: String] = [:]
     var wallpapers: [String: Entry] = [:]
+    /// Wallpaper-ID → vom Benutzer geänderte Einstellungen.
+    var overrides: [String: [String: PropertyValue]]?
 
     /// Der echte Benutzerordner: in der Sandbox zeigt NSHomeDirectory auf den Container des Bildschirmschoners.
     static var supportDir: URL {

@@ -70,7 +70,9 @@ final class SaverView: ScreenSaverView {
         let view: WallpaperContent
         switch wallpaper.kind {
         case .web:
-            view = WebWallpaperView(wallpaper: wallpaper, scheme: Self.scheme, fpsLimit: config.fps, frame: frame, ignoresOcclusion: true) { [] }
+            let overrides = config.overrides?[wallpaper.id]?.mapValues(\.any) ?? [:]
+            view = WebWallpaperView(wallpaper: wallpaper, scheme: Self.scheme, fpsLimit: config.fps, frame: frame,
+                                    ignoresOcclusion: true, overrides: { overrides }, mediaSnapshot: { [] })
         case .video:
             view = VideoWallpaperView(wallpaper: wallpaper, frame: frame)
         }

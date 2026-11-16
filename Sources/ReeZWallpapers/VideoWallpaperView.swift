@@ -50,6 +50,10 @@ final class VideoWallpaperView: NSView, WallpaperContent {
         // Videos zeigen keinen Titel an.
     }
 
+    func properties(_ values: [String: Any]) {
+        // Videos haben keine Einstellungen.
+    }
+
     func still(completion: @escaping (Data?) -> Void) {
         // Ein Bild vom Anfang der Schleife, in voller Auflösung des Videos
         let generator = AVAssetImageGenerator(asset: AVURLAsset(url: videoURL))

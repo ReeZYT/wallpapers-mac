@@ -168,13 +168,22 @@ Hintergrundbild anzufassen, und nennt je Monitor das gerade eingestellte macOS-B
 
 ## Einstellungen der Wallpaper
 
-Abweichende Einstellungen eines Wallpapers lassen sich schon speichern, eine Oberfläche dafür gibt es noch nicht:
+Jedes Web-Wallpaper beschreibt seine Einstellungen in `project.json` unter `general.properties`, so wie Wallpaper
+Engine sie anbietet. Die App baut daraus ein Fenster je Wallpaper (Menü → „Einstellungen für …“, für nicht gezeigte
+Wallpaper im Untermenü):
 
-```bash
-defaults write cc.reez.wallpapers propertyOverrides -dict-add "site/nishiki-interactive-koi-pond" '{ fishcount = 20; clock = 1; }'
-```
-
-Danach „Wallpaper neu laden“. Die Schlüssel stehen in der `project.json` des Wallpapers unter `general.properties`.
+- `WallpaperProperties.swift` liest die Einstellungen: Typen `bool`, `slider`, `combo`, `color` und `textinput`,
+  Reihenfolge nach `order`, Beschriftungen aus `general.localization` (Deutsch auf deutschen Macs, sonst Englisch,
+  sonst der Text selbst), HTML in Beschriftungen wird entfernt. Andere Typen (Dateien, Ordner) fehlen.
+- `condition` (z. B. `clock.value == true`) blendet Einstellungen ein und aus; ausgewertet mit JavaScriptCore, im
+  Zweifel sichtbar.
+- `PropertiesPanel.swift` ist das Fenster. Jede Änderung geht sofort als `applyUserProperties({ schlüssel: { value } })`
+  an alle Monitore, auf denen das Wallpaper läuft; Regler schicken beim Ziehen höchstens alle 0,12 s.
+- Gespeichert werden nur Abweichungen vom Standard, je Wallpaper (`propertyOverrides` in den Einstellungen der App).
+  Sie stehen auch in `saver.json`, damit der Bildschirmschoner sie übernimmt.
+- Von außen: `ReeZWallpapers --set <wallpaper-id> <schlüssel>=<wert>` (Wert als JSON: `true`, `24`, `"maple"`) setzt
+  eine Einstellung in der laufenden App, `--settings <wallpaper-id>` öffnet das Fenster, `--settings close` schließt
+  alle. Was bei der Seite ankam, zeigt `--diagnose` unter `userProperties`.
 
 ## Diagnose
 
@@ -192,6 +201,5 @@ unter Entwickler → ReeZ Wallpapers im Web Inspector öffnen.
 
 - Musikreaktion (Audiodaten für `wallpaperRegisterAudioListener`): bräuchte die Freigabe „Systemaudio aufnehmen“.
 - Laufender Titel aus anderen Quellen als Spotify und Apple Music.
-- Eine Oberfläche für die Einstellungen der Wallpaper.
 - Rechtsklick, Mausrad und Tastatur werden nicht weitergegeben.
 - Titel und Cover im Bildschirmschoner.

@@ -8,7 +8,8 @@ monitor. If you'd rather have a different one on each monitor, the menu does tha
 site and stay up to date on their own, so there is nothing to download by hand.
 
 The wallpapers react to your mouse like they do in Wallpaper Engine, and the ones with a music display show what's
-playing in Spotify or Apple Music.
+playing in Spotify or Apple Music. Each wallpaper has its own settings window with the options it would have in
+Wallpaper Engine. You'll find it in the menu.
 
 You can also lock your Mac from the app's menu. A screen saver takes over then, and the wallpaper keeps running until
 you touch the mouse or keyboard.

@@ -161,16 +161,44 @@ final class DisplayManager {
                 revision: wallpaper.revision, isLocal: wallpaper.isLocal
             )
         }
+        // Geänderte Einstellungen der Wallpaper: der Bildschirmschoner hat keinen Zugriff auf die der App
+        var overrides: [String: [String: PropertyValue]] = [:]
+        for (id, values) in Settings.propertyOverrides {
+            let known = values.compactMapValues(PropertyValue.init)
+            if !known.isEmpty { overrides[id] = known }
+        }
+        config.overrides = overrides.isEmpty ? nil : overrides
         config.write()
+    }
+
+    // MARK: Einstellungen der Wallpaper
+
+    /// Die gerade gezeigten Wallpaper, von links nach rechts, jedes einmal.
+    var activeWallpapers: [Wallpaper] {
+        var seen = Set<String>()
+        return windows.values
+            .sorted { $0.frame.minX < $1.frame.minX }
+            .compactMap(\.wallpaper)
+            .filter { seen.insert($0.id).inserted }
+    }
+
+    /// Gibt geänderte Einstellungen an alle Monitore, auf denen das Wallpaper läuft, und an den Bildschirmschoner.
+    func apply(properties values: [String: Any], toWallpaper id: String) {
+        for window in windows.values where window.wallpaper?.id == id {
+            window.content?.properties(values)
+        }
+        writeSaverConfig(displays())
     }
 
     private func makeContent(_ wallpaper: Wallpaper, size: NSSize) -> WallpaperContent {
         let frame = NSRect(origin: .zero, size: size)
         switch wallpaper.kind {
         case .web:
-            return WebWallpaperView(wallpaper: wallpaper, scheme: scheme, fpsLimit: Settings.fpsLimit, frame: frame) { [media] in
-                media.snapshot()
-            }
+            return WebWallpaperView(
+                wallpaper: wallpaper, scheme: scheme, fpsLimit: Settings.fpsLimit, frame: frame,
+                overrides: { Settings.propertyOverrides[wallpaper.id] ?? [:] },
+                mediaSnapshot: { [media] in media.snapshot() }
+            )
         case .video:
             return VideoWallpaperView(wallpaper: wallpaper, frame: frame)
         }

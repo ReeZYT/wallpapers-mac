@@ -71,6 +71,8 @@ final class MenuController: NSObject, NSMenuDelegate {
             }
         }
 
+        addSettingsItems(to: menu)
+
         menu.addItem(.separator())
         menu.addItem(ActionItem(L("Pause", "Pausieren"), state: displays.userPaused ? .on : .off) { [displays] in
             displays.userPaused.toggle()
@@ -165,6 +167,30 @@ final class MenuController: NSObject, NSMenuDelegate {
         })
         let quit = NSMenuItem(title: L("Quit ReeZ Wallpapers", "ReeZ Wallpapers beenden"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
+    }
+
+    /// Einstellungen der Wallpaper: die gerade gezeigten direkt, alle anderen in einem Untermenü.
+    private func addSettingsItems(to menu: NSMenu) {
+        let configurable = library.wallpapers.filter { $0.kind == .web && !WallpaperProperties.list(for: $0).isEmpty }
+        guard !configurable.isEmpty else { return }
+        let active = displays.activeWallpapers.filter { shown in configurable.contains { $0.id == shown.id } }
+        let others = configurable.filter { wallpaper in !active.contains { $0.id == wallpaper.id } }
+        menu.addItem(.separator())
+        for wallpaper in active {
+            menu.addItem(ActionItem(L("Settings for “\(wallpaper.title)”…", "Einstellungen für „\(wallpaper.title)“ …")) { [displays] in
+                PropertiesPanel.show(wallpaper, displays: displays)
+            })
+        }
+        if !others.isEmpty {
+            let item = NSMenuItem(title: active.isEmpty ? L("Wallpaper settings", "Wallpaper-Einstellungen") : L("Settings for other wallpapers", "Einstellungen anderer Wallpaper"), action: nil, keyEquivalent: "")
+            item.submenu = NSMenu()
+            for wallpaper in others {
+                item.submenu?.addItem(ActionItem(wallpaper.title) { [displays] in
+                    PropertiesPanel.show(wallpaper, displays: displays)
+                })
+            }
+            menu.addItem(item)
+        }
     }
 
     private func info(_ title: String) -> NSMenuItem {

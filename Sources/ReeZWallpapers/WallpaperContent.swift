@@ -8,6 +8,8 @@ protocol WallpaperContent: NSView {
     func mouse(_ type: String, x: CGFloat, y: CGFloat, buttons: Int)
     /// Medienereignis wie in Wallpaper Engine: „status“, „properties“, „thumbnail“, „playback“ oder „timeline“.
     func media(_ kind: String, _ payload: [String: Any])
+    /// Geänderte Einstellungen des Wallpapers (Schlüssel aus project.json → neuer Wert).
+    func properties(_ values: [String: Any])
     /// Standbild als JPEG, oder nil, wenn sich der Inhalt nicht verlässlich abbilden lässt (dann nimmt der Aufrufer
     /// das Titelbild des Wallpapers).
     func still(completion: @escaping (Data?) -> Void)

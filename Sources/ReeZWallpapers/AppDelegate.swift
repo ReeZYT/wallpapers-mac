@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SaverInstaller.updateIfNeeded()
         LockShortcuts.shared.apply()
         observeSystem()
-        observers.append(Diagnostics.serve(displays))
+        observers.append(contentsOf: Diagnostics.serve(displays, library: library))
 
         // Beim Start und danach alle sechs Stunden nach neuen oder geänderten Wallpapern sehen
         Task { await library.sync() }

@@ -10,13 +10,17 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
     private var fpsLimit: Int
     /// Aktueller Medienstand für eine frisch geladene Seite.
     private let mediaSnapshot: () -> [(String, [String: Any])]
+    /// Vom Benutzer geänderte Einstellungen (Schlüssel → Wert); der Rest kommt aus project.json.
+    private let overrides: () -> [String: Any]
 
     /// - Parameter ignoresOcclusion: Die Seite gilt als sichtbar, solange ihr Fenster offen ist. Nötig im
     ///   Bildschirmschoner: macOS zeigt dessen Fenster über einen fremden Prozess an, WebKit hält sie deshalb für
     ///   verdeckt und friert die Seite ein (man sieht dann nur ihre Hintergrundfarbe).
-    init(wallpaper: Wallpaper, scheme: ProjectSchemeHandler, fpsLimit: Int, frame: NSRect, ignoresOcclusion: Bool = false, mediaSnapshot: @escaping () -> [(String, [String: Any])]) {
+    init(wallpaper: Wallpaper, scheme: ProjectSchemeHandler, fpsLimit: Int, frame: NSRect, ignoresOcclusion: Bool = false,
+         overrides: @escaping () -> [String: Any], mediaSnapshot: @escaping () -> [(String, [String: Any])]) {
         self.wallpaper = wallpaper
         self.fpsLimit = fpsLimit
+        self.overrides = overrides
         self.mediaSnapshot = mediaSnapshot
         scheme.register(wallpaper)
 
@@ -68,6 +72,13 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
 
     func mouse(_ type: String, x: CGFloat, y: CGFloat, buttons: Int) {
         run("window.__reez&&window.__reez.mouse('\(type)',\(String(format: "%.1f", x)),\(String(format: "%.1f", y)),\(buttons))")
+    }
+
+    func properties(_ values: [String: Any]) {
+        // Wie Wallpaper Engine bei einer Änderung: nur die geänderten Einstellungen, jede als { value: … }
+        let user = values.mapValues { ["value": $0] }
+        guard let data = try? JSONSerialization.data(withJSONObject: user) else { return }
+        run("window.__reez&&window.__reez.props(\(String(decoding: data, as: UTF8.self)),null)")
     }
 
     func media(_ kind: String, _ payload: [String: Any]) {
@@ -133,6 +144,7 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
               canvases: Array.from(document.querySelectorAll('canvas')).map(function (c) { return (c.id || '?') + ' ' + c.width + 'x' + c.height; }),
               framesPerSecond: frames, mouseMoves: moves, clicks: clicks,
               propertyListener: !!window.wallpaperPropertyListener, propertiesApplied: r.propsApplied || 0, paused: !!r.paused,
+              userProperties: r.userProps || {},
               audioListeners: (l.audio || []).length, mediaListeners: (l.properties || []).length,
               media: (function (m) {
                 return {
@@ -199,8 +211,7 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
         loaded = true
         // Wie Wallpaper Engine nach dem Laden: erst allgemeine, dann alle eigenen Einstellungen übergeben
         let project = ProjectFile(root: wallpaper.root)
-        let overrides = Settings.propertyOverrides[wallpaper.id] ?? [:]
-        let user = project?.userProperties(overrides: overrides) ?? [:]
+        let user = project?.userProperties(overrides: overrides()) ?? [:]
         let json = (try? JSONSerialization.data(withJSONObject: user)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         run("window.__reez&&window.__reez.props(\(json),{fps:\(fpsLimit)})")
         if paused { run("window.__reez&&window.__reez.setPaused(true)") }
@@ -278,6 +289,7 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
         last: last,
         errors: errors,
         propsApplied: 0,
+        userProps: {},
         paused: false,
         send: function (kind, payload) {
           if (!listeners[kind]) return;
@@ -288,7 +300,13 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
           var l = window.wallpaperPropertyListener;
           if (!l) return;
           try { if (general && l.applyGeneralProperties) l.applyGeneralProperties(general); } catch (e) { /* weiter */ }
-          try { if (user && l.applyUserProperties) { l.applyUserProperties(user); host.propsApplied = Object.keys(user).length; } } catch (e) { errors.push('applyUserProperties: ' + e.message); }
+          try {
+            if (user && l.applyUserProperties) {
+              l.applyUserProperties(user);
+              host.propsApplied = Object.keys(user).length;
+              Object.keys(user).forEach(function (key) { host.userProps[key] = user[key].value; });
+            }
+          } catch (e) { errors.push('applyUserProperties: ' + e.message); }
         },
         setPaused: function (paused) {
           host.paused = !!paused;
