@@ -29,7 +29,7 @@ packt `build/ReeZ-Wallpapers-mac.zip` und gibt Version, Größe und SHA-256 als 
 
 1. Version in `Resources/Info.plist` erhöhen (`CFBundleShortVersionString`).
 2. `scripts/package.sh > build/mac-app.json`
-3. Im Seiten-Repo: ZIP nach `public/downloads/`, JSON nach `src/data/mac-app.json`, dort `npm run check && npm run build
+3. Im Seiten-Repo: ZIP nach `public/downloads/`, JSON nach `src/lib/mac-app.json`, dort `npm run check && npm run build
    && npm test`, committen und nach `main` bringen (deployt automatisch).
 
 Installierte Apps fragen beim Abgleich `/mac/version.json` ab und zeigen im Menü einen Update-Hinweis, sobald dort eine
