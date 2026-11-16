@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var asleep = false
     private var locked = false
     private var sessionInactive = false
+    private var saverRunning = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ein zweiter Start würde zwei Fenster übereinanderlegen
@@ -78,11 +79,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             locked = (session["CGSSessionScreenIsLocked"] as? Bool) ?? false
             updateSystemPause()
         }
+        // Läuft der Bildschirmschoner, zeichnet er die Wallpaper selbst: die eigenen Fenster dahinter ruhen so lange
+        on(distributed, Notification.Name("com.apple.screensaver.didstart")) { $0.saverRunning = true; $0.updateSystemPause() }
+        on(distributed, Notification.Name("com.apple.screensaver.didstop")) { $0.saverRunning = false; $0.updateSystemPause() }
         on(distributed, Notification.Name("com.apple.screenIsLocked")) { $0.locked = true; $0.updateSystemPause() }
         on(distributed, Notification.Name("com.apple.screenIsUnlocked")) { $0.locked = false; $0.updateSystemPause() }
     }
 
     private func updateSystemPause() {
-        displays.systemPaused = asleep || locked || sessionInactive
+        displays.systemPaused = asleep || locked || sessionInactive || saverRunning
     }
 }
