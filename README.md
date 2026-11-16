@@ -149,7 +149,7 @@ Deshalb liegt in der App ein Bildschirmschoner (`Sources/ReeZWallpapersSaver`, B
   aus `~/Library/Application Support/ReeZ Wallpapers`. Seine Ansichten sind dieselben wie in der App: die gemeinsamen
   Quelldateien sind per Symlink in das zweite SwiftPM-Ziel eingehängt.
 - Titel und Cover, Maus und Pausen gibt es im Bildschirmschoner nicht. Was er tut, steht im Systemprotokoll:
-  `log show --last 5m --predicate 'eventMessage CONTAINS "ReeZSaver"'`.
+  `/usr/bin/log show --last 5m --predicate 'subsystem == "cc.reez.wallpapers.saver"'`.
 
 Was als Standbild herauskäme, zeigt `--diagnose <ordner> --force`: Es legt die Bilder in den Ordner, ohne das
 Hintergrundbild anzufassen, und nennt je Monitor das gerade eingestellte macOS-Bild.

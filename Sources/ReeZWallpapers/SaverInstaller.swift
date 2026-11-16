@@ -41,6 +41,11 @@ enum SaverInstaller {
         try fm.createDirectory(at: installed.deletingLastPathComponent(), withIntermediateDirectories: true)
         if fm.fileExists(atPath: installed.path) { try fm.removeItem(at: installed) }
         try fm.copyItem(at: embedded, to: installed)
+        // Ein noch laufender Wirtsprozess (z. B. von der Vorschau in den Systemeinstellungen) hielte die alte Fassung
+        let stop = Process()
+        stop.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        stop.arguments = ["-f", "legacyScreenSaver.appex"]
+        try? stop.run()
     }
 
     /// Nach einem Update der App den eingerichteten Bildschirmschoner nachziehen.

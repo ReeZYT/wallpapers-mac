@@ -11,7 +11,10 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
     /// Aktueller Medienstand für eine frisch geladene Seite.
     private let mediaSnapshot: () -> [(String, [String: Any])]
 
-    init(wallpaper: Wallpaper, scheme: ProjectSchemeHandler, fpsLimit: Int, frame: NSRect, mediaSnapshot: @escaping () -> [(String, [String: Any])]) {
+    /// - Parameter ignoresOcclusion: Die Seite gilt als sichtbar, solange ihr Fenster offen ist. Nötig im
+    ///   Bildschirmschoner: macOS zeigt dessen Fenster über einen fremden Prozess an, WebKit hält sie deshalb für
+    ///   verdeckt und friert die Seite ein (man sieht dann nur ihre Hintergrundfarbe).
+    init(wallpaper: Wallpaper, scheme: ProjectSchemeHandler, fpsLimit: Int, frame: NSRect, ignoresOcclusion: Bool = false, mediaSnapshot: @escaping () -> [(String, [String: Any])]) {
         self.wallpaper = wallpaper
         self.fpsLimit = fpsLimit
         self.mediaSnapshot = mediaSnapshot
@@ -30,6 +33,7 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
         layer?.backgroundColor = NSColor.black.cgColor
         webView.navigationDelegate = self
         webView.autoresizingMask = [.width, .height]
+        if ignoresOcclusion { setOcclusionDetection(false) }
         webView.allowsMagnification = false
         webView.allowsBackForwardNavigationGestures = false
         // Schwarz statt weißem Aufblitzen, bis die Seite zeichnet
@@ -180,8 +184,8 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
         if force { DispatchQueue.main.asyncAfter(deadline: .now() + 2.5, execute: start) } else { start() }
     }
 
-    /// WebKit hält Seiten in verdeckten Fenstern an. Für die Diagnose lässt sich das abschalten (interne Methode,
-    /// wird nur dort benutzt und ist optional: fehlt sie, bleibt alles wie es ist).
+    /// WebKit hält Seiten in verdeckten Fenstern an. Für die Diagnose und im Bildschirmschoner lässt sich das
+    /// abschalten (interne Methode von WKWebView; fehlt sie, bleibt alles wie es ist).
     private func setOcclusionDetection(_ enabled: Bool) {
         let selector = NSSelectorFromString("_setWindowOcclusionDetectionEnabled:")
         guard webView.responds(to: selector) else { return }
