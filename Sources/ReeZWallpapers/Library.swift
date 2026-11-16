@@ -112,13 +112,23 @@ final class Library {
     // MARK: Abgleich mit wallpapers.reez.cc
 
     private struct SiteMeta: Decodable {
+        struct Cover: Decodable {
+            struct Variant: Decodable {
+                let w: Int
+                let file: String
+            }
+            let jpg: String?
+            let webp: [Variant]?
+        }
         struct Assets: Decodable {
             let zip: String
             let zipSize: Int?
+            let cover: Cover?
         }
         let slug: String
         let title: String
         let type: String
+        let rev: Int?
         let assets: Assets
     }
 
@@ -246,6 +256,7 @@ final class Library {
         let http = response as? HTTPURLResponse
         let code = http?.statusCode ?? 0
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        await syncCover(meta, from: files, to: dir)
         if code == 304 {
             // Inhalt unverändert, Titel kann sich trotzdem geändert haben
             try metaData.write(to: dir.appendingPathComponent("meta.json"), options: .atomic)
@@ -265,7 +276,43 @@ final class Library {
         try fm.moveItem(at: found, to: projectDir)
         try metaData.write(to: dir.appendingPathComponent("meta.json"), options: .atomic)
         let etag = http?.value(forHTTPHeaderField: "ETag") ?? http?.value(forHTTPHeaderField: "Last-Modified") ?? UUID().uuidString
-        try JSONEncoder().encode(["etag": etag]).write(to: dir.appendingPathComponent("state.json"), options: .atomic)
+        try writeState(dir, ["etag": etag])
+    }
+
+    private func writeState(_ dir: URL, _ values: [String: String]) throws {
+        let merged = readState(dir).merging(values) { _, new in new }
+        try JSONEncoder().encode(merged).write(to: dir.appendingPathComponent("state.json"), options: .atomic)
+    }
+
+    /// Lädt das größte Titelbild der Seite nach `cover.<endung>`. Es dient als Standbild für den Sperrbildschirm,
+    /// wenn sich das Wallpaper selbst nicht verlässlich abbilden lässt. Fehler sind hier unwichtig.
+    private func syncCover(_ meta: SiteMeta, from files: URL, to dir: URL) async {
+        guard let cover = meta.assets.cover,
+              let file = cover.webp?.max(by: { $0.w < $1.w })?.file ?? cover.jpg,
+              file.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil else { return }
+        let ext = (file as NSString).pathExtension.lowercased()
+        let target = dir.appendingPathComponent("cover." + ext)
+        let key = "\(file)?v=\(meta.rev ?? 0)"
+        if readState(dir)["cover"] == key, fm.fileExists(atPath: target.path) { return }
+        guard let (data, response) = try? await session.data(from: files.appendingPathComponent(file)),
+              (response as? HTTPURLResponse)?.statusCode == 200, !data.isEmpty else { return }
+        for old in ["cover.webp", "cover.jpg", "cover.jpeg", "cover.png"] {
+            try? fm.removeItem(at: dir.appendingPathComponent(old))
+        }
+        try? data.write(to: target, options: .atomic)
+        try? writeState(dir, ["cover": key])
+    }
+
+    /// Ein ruhendes Bild des Wallpapers: das Titelbild der Seite, sonst die Vorschau aus dem Projektordner.
+    func cover(for wallpaper: Wallpaper) -> URL? {
+        if !wallpaper.isLocal, let slug = wallpaper.id.split(separator: "/").last {
+            let dir = siteDir.appendingPathComponent(String(slug), isDirectory: true)
+            for name in ["cover.webp", "cover.jpg", "cover.jpeg", "cover.png"] {
+                let url = dir.appendingPathComponent(name)
+                if fm.fileExists(atPath: url.path) { return url }
+            }
+        }
+        return wallpaper.preview
     }
 
     /// Der Ordner mit project.json: das ZIP selbst oder ein Unterordner (die Seite packt <slug>/ hinein).

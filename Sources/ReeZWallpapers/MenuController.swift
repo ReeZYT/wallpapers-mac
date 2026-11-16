@@ -99,6 +99,11 @@ final class MenuController: NSObject, NSMenuDelegate {
             menu.addItem(info("\(symbol)  \(track.title)" + (track.artist.isEmpty ? "" : " – \(track.artist)")))
         }
 
+        menu.addItem(ActionItem(L("Match the lock screen (still image as macOS wallpaper)", "Sperrbildschirm angleichen (Standbild als macOS-Hintergrund)"), state: Settings.lockScreenMatch ? .on : .off) { [displays] in
+            Settings.lockScreenMatch.toggle()
+            displays.refresh()
+        })
+
         menu.addItem(.separator())
         menu.addItem(info(syncStatus()))
         menu.addItem(ActionItem(L("Check wallpapers.reez.cc now", "Jetzt mit wallpapers.reez.cc abgleichen")) { [library] in

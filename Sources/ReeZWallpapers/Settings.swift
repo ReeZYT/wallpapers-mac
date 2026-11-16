@@ -44,6 +44,18 @@ enum Settings {
         set { d.set(newValue, forKey: "mediaEnabled") }
     }
 
+    /// Standbild des Wallpapers als macOS-Hintergrundbild eintragen, damit der Sperrbildschirm dazu passt.
+    static var lockScreenMatch: Bool {
+        get { d.bool(forKey: "lockScreenMatch") }
+        set { d.set(newValue, forKey: "lockScreenMatch") }
+    }
+
+    /// Display-UUID → Pfad des macOS-Hintergrundbilds, das vor dem Angleichen eingestellt war (zum Zurückstellen).
+    static var savedDesktopImages: [String: String] {
+        get { d.dictionary(forKey: "savedDesktopImages") as? [String: String] ?? [:] }
+        set { d.set(newValue, forKey: "savedDesktopImages") }
+    }
+
     /// Wallpaper-ID → abweichende Werte für Einstellungen aus project.json (Schlüssel → Wert).
     static var propertyOverrides: [String: [String: Any]] {
         get { d.dictionary(forKey: "propertyOverrides") as? [String: [String: Any]] ?? [:] }

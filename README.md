@@ -113,6 +113,25 @@ Zum Testen ohne Player genügt eine nachgestellte Mitteilung, z. B. per Swift-Sk
 `DistributedNotificationCenter.default().postNotificationName(...)` und den Feldern `Player State`, `Name`, `Artist`,
 `Album`, `Duration` (ms), `Playback Position` (s), `Track ID`. Was bei der Seite ankommt, zeigt `--diagnose` unter `media`.
 
+## Sperrbildschirm
+
+Den Sperrbildschirm zeichnet macOS selbst über allen Fenstern; fremde Apps kommen dort nicht hin, und bewegte
+Hintergründe können nur Apples eigene Erweiterungen (`WallpaperExtensionKit` ist privat). Er zeigt aber immer das
+macOS-Hintergrundbild des jeweiligen Monitors. Der Schalter „Sperrbildschirm angleichen“ (`LockScreenMatcher.swift`,
+standardmäßig aus) trägt dort je Monitor ein Standbild des laufenden Wallpapers ein:
+
+- Web-Wallpaper: Schnappschuss der Seite in voller Auflösung. Seiten mit 3D-Transformationen bildet
+  `WKWebView.takeSnapshot` falsch ab; sie bekommen das Titelbild der Seite (`site/<slug>/cover.*`, wird beim Abgleich
+  mitgeladen), eigene Ordner ihre Vorschau.
+- Video-Wallpaper: ein Bild vom Anfang der Schleife.
+- Die Bilder liegen unter `~/Library/Application Support/ReeZ Wallpapers/stills/`. Das vorher eingestellte
+  Hintergrundbild wird je Monitor gemerkt und beim Ausschalten zurückgestellt (ein bewegter Apple-Hintergrund kommt
+  dabei als sein Standbild zurück und muss in den Systemeinstellungen neu gewählt werden).
+- macOS merkt sich das Hintergrundbild je Space; die App trägt es deshalb bei jedem Space-Wechsel nach.
+
+Was als Standbild herauskäme, zeigt `--diagnose <ordner> --force`: Es legt die Bilder in den Ordner, ohne das
+Hintergrundbild anzufassen, und nennt je Monitor das gerade eingestellte macOS-Bild.
+
 ## Einstellungen der Wallpaper
 
 Abweichende Einstellungen eines Wallpapers lassen sich schon speichern, eine Oberfläche dafür gibt es noch nicht:
@@ -141,3 +160,4 @@ unter Entwickler → ReeZ Wallpapers im Web Inspector öffnen.
 - Laufender Titel aus anderen Quellen als Spotify und Apple Music.
 - Eine Oberfläche für die Einstellungen der Wallpaper.
 - Rechtsklick, Mausrad und Tastatur werden nicht weitergegeben.
+- Bewegter Sperrbildschirm: geht nur als Bildschirmschoner (eigenes `.saver`-Bündel), noch nicht gebaut.

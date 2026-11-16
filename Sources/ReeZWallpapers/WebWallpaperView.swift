@@ -76,6 +76,36 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
         webView.evaluateJavaScript(script + ";0", completionHandler: nil)
     }
 
+    func still(completion: @escaping (Data?) -> Void) {
+        guard loaded else { return completion(nil) }
+        // takeSnapshot zeichnet 3D-Transformationen falsch (gespiegelte Rückseiten): solche Seiten liefern kein Standbild
+        let uses3D = "Array.prototype.some.call(document.querySelectorAll('*'),function(e){return getComputedStyle(e).transformStyle==='preserve-3d'})"
+        webView.evaluateJavaScript(uses3D) { [weak self] result, _ in
+            guard let self, (result as? Bool) == false else { return completion(nil) }
+            let config = WKSnapshotConfiguration()
+            config.afterScreenUpdates = true
+            self.webView.takeSnapshot(with: config) { image, _ in
+                guard let image, let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+                      !Self.isBlank(cgImage) else { return completion(nil) }
+                completion(NSBitmapImageRep(cgImage: cgImage).representation(using: .jpeg, properties: [.compressionFactor: 0.9]))
+            }
+        }
+    }
+
+    /// Fast einfarbig dunkel? Dann hat der Schnappschuss die Zeichenfläche nicht erwischt.
+    private static func isBlank(_ image: CGImage) -> Bool {
+        let side = 16
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        guard let context = CGContext(data: &pixels, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
+        var brightest: UInt8 = 0
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            brightest = max(brightest, pixels[i], pixels[i + 1], pixels[i + 2])
+        }
+        return brightest < 12
+    }
+
     func diagnose(force: Bool, completion: @escaping ([String: Any]) -> Void) {
         guard loaded else { return completion(["loaded": false]) }
         if force {

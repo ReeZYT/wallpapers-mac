@@ -54,6 +54,7 @@ final class WallpaperWindow: NSWindow {
 final class DisplayManager {
     private let library: Library
     let media = MediaCenter()
+    private(set) lazy var lockScreen = LockScreenMatcher(library: library)
     private let scheme = ProjectSchemeHandler()
     private var windows: [String: WallpaperWindow] = [:]
     private var occlusionObserver: NSObjectProtocol?
@@ -150,6 +151,7 @@ final class DisplayManager {
             window.orderFront(nil)
             applyPause(to: window)
         }
+        lockScreen.update(current.map { LockScreenMatcher.Target(display: $0, window: windows[$0.uuid]) })
     }
 
     private func makeContent(_ wallpaper: Wallpaper, size: NSSize) -> WallpaperContent {
@@ -189,6 +191,15 @@ final class DisplayManager {
         let names = Dictionary(uniqueKeysWithValues: displays().map { ($0.uuid, $0.name) })
         var report: [[String: Any]] = []
         let group = DispatchGroup()
+        var stills: [String: String] = [:]
+        if force {
+            // Mit --force auch die Standbilder für den Sperrbildschirm ablegen (ohne sie einzutragen)
+            group.enter()
+            lockScreen.writeStills(to: dir) { result in
+                stills = result
+                group.leave()
+            }
+        }
         for (uuid, window) in windows {
             var entry: [String: Any] = [
                 "display": names[uuid] ?? uuid,
@@ -212,7 +223,13 @@ final class DisplayManager {
             }
         }
         group.notify(queue: .main) {
-            let sorted = report.sorted { ($0["windowNumber"] as? Int ?? 0) < ($1["windowNumber"] as? Int ?? 0) }
+            var sorted = report.sorted { ($0["windowNumber"] as? Int ?? 0) < ($1["windowNumber"] as? Int ?? 0) }
+            for index in sorted.indices {
+                if let name = sorted[index]["display"] as? String, let still = stills[name] { sorted[index]["still"] = still }
+                if let name = sorted[index]["display"] as? String, let screen = self.displays().first(where: { $0.name == name })?.screen {
+                    sorted[index]["macOSWallpaper"] = NSWorkspace.shared.desktopImageURL(for: screen)?.lastPathComponent ?? ""
+                }
+            }
             if let data = try? JSONSerialization.data(withJSONObject: sorted, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: dir.appendingPathComponent("report.json"))
             }

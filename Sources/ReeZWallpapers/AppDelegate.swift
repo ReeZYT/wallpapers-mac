@@ -62,6 +62,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Monitor an- oder abgesteckt, Auflösung oder Anordnung geändert
         on(center, NSApplication.didChangeScreenParametersNotification) { $0.displays.refresh() }
 
+        // macOS merkt sich das Hintergrundbild je Space
+        on(workspace, NSWorkspace.activeSpaceDidChangeNotification) { $0.displays.lockScreen.spaceChanged() }
         on(workspace, NSWorkspace.screensDidSleepNotification) { $0.asleep = true; $0.updateSystemPause() }
         on(workspace, NSWorkspace.screensDidWakeNotification) { $0.asleep = false; $0.updateSystemPause(); $0.displays.refresh() }
         on(workspace, NSWorkspace.sessionDidResignActiveNotification) { $0.sessionInactive = true; $0.updateSystemPause() }
