@@ -56,10 +56,10 @@ enum Settings {
         set { d.set(newValue, forKey: "savedDesktopImages") }
     }
 
-    /// Auch nach einer normalen Sperre (Tastenkürzel von macOS, Touch-ID-Taste) den Bildschirmschoner starten.
-    static var saverOnLock: Bool {
-        get { d.bool(forKey: "saverOnLock") }
-        set { d.set(newValue, forKey: "saverOnLock") }
+    /// ⌃⌘Q (Sperr-Kürzel von macOS) zusätzlich für „Sperren – Wallpaper läuft weiter“ belegen.
+    static var takeOverSystemLockShortcut: Bool {
+        get { d.bool(forKey: "takeOverSystemLockShortcut") }
+        set { d.set(newValue, forKey: "takeOverSystemLockShortcut") }
     }
 
     /// Wallpaper-ID → abweichende Werte für Einstellungen aus project.json (Schlüssel → Wert).
