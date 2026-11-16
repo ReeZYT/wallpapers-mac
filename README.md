@@ -56,15 +56,40 @@ Unterstützt werden die Typen `web` und `video` aus `project.json`. Szenen und P
 - **Video-Wallpaper** spielt `AVPlayerLooper` nahtlos, stumm und bildfüllend.
 - **Schnittstelle von Wallpaper Engine** (`WebWallpaperView.swift`, Skript `bridge`): Nach dem Laden gehen alle
   Einstellungen aus `project.json` mit ihren Standardwerten an `wallpaperPropertyListener.applyUserProperties`, die
-  Bildraten-Grenze an `applyGeneralProperties`, Pausen an `setPaused`. Die Audio- und Medien-Funktionen
-  (`wallpaperRegisterAudioListener`, `wallpaperRegisterMedia…Listener`) sind vorhanden und merken sich die Listener,
-  liefern aber noch nichts. Die Wallpaper verhalten sich damit wie in Wallpaper Engine ohne laufende Musik.
+  Bildraten-Grenze an `applyGeneralProperties`, Pausen an `setPaused`. Die Medien-Listener
+  (`wallpaperRegisterMedia…Listener`) bekommen den laufenden Titel, siehe unten. `wallpaperRegisterAudioListener` ist
+  vorhanden und merkt sich die Listener, liefert aber noch nichts: die Wallpaper verhalten sich wie in Wallpaper
+  Engine ohne Tonsignal.
 - **Maus** (`MouseForwarder.swift`): Die Fenster liegen hinter den Desktop-Symbolen und bekommen keine Mausereignisse.
   Ein globaler Beobachter meldet Bewegung und Linksklicks; liegt unter dem Zeiger der freie Desktop, erzeugt die Brücke
   daraus `mousemove`, `mousedown`, `mouseup`, `click` und die Pointer-Ereignisse in der Seite. macOS verlangt dafür
   keine Freigabe.
 - **Pause**: von Hand im Menü, außerdem von allein, wenn ein Monitor ganz von Fenstern verdeckt ist, die Monitore
   schlafen oder der Bildschirm gesperrt ist.
+
+## Laufender Titel
+
+`MediaCenter.swift` ist das Gegenstück zur Medienintegration von Wallpaper Engine: Titel, Interpret, Album, Cover,
+Wiedergabezustand und Position gehen an die Medien-Listener der Wallpaper (Mixtape, Neon Torii, die Neko-Wallpaper).
+Abschalten lässt es sich im Menü („Laufenden Titel an Wallpaper geben“), dort steht auch der erkannte Titel.
+
+- **Quelle:** Unter Windows liest Wallpaper Engine den Titel systemweit. macOS gibt diese Auskunft seit 15.4 nur noch
+  an Apples eigene Programme. **Spotify** und **Apple Music** melden Titelwechsel, Start und Pause aber selbst über
+  verteilte Mitteilungen (`com.spotify.client.PlaybackStateChanged`, `com.apple.Music.playerInfo`); dafür braucht es
+  keine Freigabe. Andere Quellen (YouTube im Browser, andere Player) kommen nicht an.
+- **Cover:** Spotify nennt es in der Mitteilung nicht. Die App fragt zum Titel Spotifys öffentliche oEmbed-Auskunft
+  (`open.spotify.com/oembed`) und lädt das Bild in 640 px von Spotifys Bildserver. Das ist die einzige Anfrage nach
+  außen neben dem Abgleich mit der Seite. Apple Music liefert kein Cover und keine Position; die Wallpaper zeichnen
+  dann ihr eigenes.
+- **Grenze:** Die Player melden nur Änderungen. Startet die App mitten in einem Titel, erscheint er beim nächsten
+  Titelwechsel oder nach Pause und Weiter.
+- Songtexte in Mixtape holt das Wallpaper selbst bei lrclib.net, wie unter Windows.
+
+Zum Testen ohne Player genügt eine nachgestellte Mitteilung, z. B. per Swift-Skript mit
+`DistributedNotificationCenter.default().postNotificationName(...)` und den Feldern `Player State`, `Name`, `Artist`,
+`Album`, `Duration` (ms), `Playback Position` (s), `Track ID`. Was bei der Seite ankommt, zeigt `--diagnose` unter `media`.
+
+## Einstellungen der Wallpaper
 
 Abweichende Einstellungen eines Wallpapers lassen sich schon speichern, eine Oberfläche dafür gibt es noch nicht:
 
@@ -88,7 +113,7 @@ unter Entwickler → ReeZ Wallpapers im Web Inspector öffnen.
 
 ## Was noch fehlt
 
-- Laufender Titel und Cover (Medienintegration) und Musikreaktion (Audiodaten): die Brücke ist vorbereitet, es fehlt
-  die Quelle auf macOS-Seite.
+- Musikreaktion (Audiodaten für `wallpaperRegisterAudioListener`): bräuchte die Freigabe „Systemaudio aufnehmen“.
+- Laufender Titel aus anderen Quellen als Spotify und Apple Music.
 - Eine Oberfläche für die Einstellungen der Wallpaper.
 - Rechtsklick, Mausrad und Tastatur werden nicht weitergegeben.

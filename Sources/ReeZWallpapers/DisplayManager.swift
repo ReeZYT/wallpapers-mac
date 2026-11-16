@@ -53,6 +53,7 @@ final class WallpaperWindow: NSWindow {
 @MainActor
 final class DisplayManager {
     private let library: Library
+    let media = MediaCenter()
     private let scheme = ProjectSchemeHandler()
     private var windows: [String: WallpaperWindow] = [:]
     private var occlusionObserver: NSObjectProtocol?
@@ -64,6 +65,9 @@ final class DisplayManager {
 
     init(library: Library) {
         self.library = library
+        media.onEvent = { [weak self] kind, payload in
+            self?.windows.values.forEach { $0.content?.media(kind, payload) }
+        }
         occlusionObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didChangeOcclusionStateNotification, object: nil, queue: .main
         ) { [weak self] note in
@@ -152,7 +156,9 @@ final class DisplayManager {
         let frame = NSRect(origin: .zero, size: size)
         switch wallpaper.kind {
         case .web:
-            return WebWallpaperView(wallpaper: wallpaper, scheme: scheme, fpsLimit: Settings.fpsLimit, frame: frame)
+            return WebWallpaperView(wallpaper: wallpaper, scheme: scheme, fpsLimit: Settings.fpsLimit, frame: frame) { [media] in
+                media.snapshot()
+            }
         case .video:
             return VideoWallpaperView(wallpaper: wallpaper, frame: frame)
         }

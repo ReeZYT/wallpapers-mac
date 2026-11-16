@@ -44,6 +44,10 @@ final class VideoWallpaperView: NSView, WallpaperContent {
         // Videos reagieren nicht auf die Maus.
     }
 
+    func media(_ kind: String, _ payload: [String: Any]) {
+        // Videos zeigen keinen Titel an.
+    }
+
     func diagnose(force: Bool, completion: @escaping ([String: Any]) -> Void) {
         let item = player.currentItem
         completion([

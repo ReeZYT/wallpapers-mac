@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu = MenuController(library: library, displays: displays, mouse: mouse)
         libraryChanged()
         mouse.setEnabled(Settings.mouseEnabled)
+        displays.media.setEnabled(Settings.mediaEnabled)
         observeSystem()
         observers.append(Diagnostics.serve(displays))
 

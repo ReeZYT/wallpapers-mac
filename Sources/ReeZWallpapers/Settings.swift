@@ -38,6 +38,12 @@ enum Settings {
         set { d.set(newValue, forKey: "mouseEnabled") }
     }
 
+    /// Laufenden Titel (Spotify, Apple Music) an die Wallpaper geben.
+    static var mediaEnabled: Bool {
+        get { d.object(forKey: "mediaEnabled") as? Bool ?? true }
+        set { d.set(newValue, forKey: "mediaEnabled") }
+    }
+
     /// Wallpaper-ID → abweichende Werte für Einstellungen aus project.json (Schlüssel → Wert).
     static var propertyOverrides: [String: [String: Any]] {
         get { d.dictionary(forKey: "propertyOverrides") as? [String: [String: Any]] ?? [:] }

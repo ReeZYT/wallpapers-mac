@@ -89,6 +89,16 @@ final class MenuController: NSObject, NSMenuDelegate {
             mouse.setEnabled(Settings.mouseEnabled)
         })
 
+        menu.addItem(ActionItem("Laufenden Titel an Wallpaper geben (Spotify, Apple Music)", state: Settings.mediaEnabled ? .on : .off) { [displays] in
+            Settings.mediaEnabled.toggle()
+            displays.media.setEnabled(Settings.mediaEnabled)
+        })
+        let track = displays.media.track
+        if Settings.mediaEnabled, !track.title.isEmpty {
+            let symbol = displays.media.playback == .playing ? "▶︎" : "❙❙"
+            menu.addItem(info("\(symbol)  \(track.title)" + (track.artist.isEmpty ? "" : " – \(track.artist)")))
+        }
+
         menu.addItem(.separator())
         menu.addItem(info(syncStatus()))
         menu.addItem(ActionItem("Jetzt mit wallpapers.reez.cc abgleichen") { [library] in

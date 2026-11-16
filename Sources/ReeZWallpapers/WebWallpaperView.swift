@@ -8,10 +8,13 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
     private var loaded = false
     private var paused = false
     private var fpsLimit: Int
+    /// Aktueller Medienstand für eine frisch geladene Seite.
+    private let mediaSnapshot: () -> [(String, [String: Any])]
 
-    init(wallpaper: Wallpaper, scheme: ProjectSchemeHandler, fpsLimit: Int, frame: NSRect) {
+    init(wallpaper: Wallpaper, scheme: ProjectSchemeHandler, fpsLimit: Int, frame: NSRect, mediaSnapshot: @escaping () -> [(String, [String: Any])]) {
         self.wallpaper = wallpaper
         self.fpsLimit = fpsLimit
+        self.mediaSnapshot = mediaSnapshot
         scheme.register(wallpaper)
 
         let config = WKWebViewConfiguration()
@@ -63,6 +66,11 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
         run("window.__reez&&window.__reez.mouse('\(type)',\(String(format: "%.1f", x)),\(String(format: "%.1f", y)),\(buttons))")
     }
 
+    func media(_ kind: String, _ payload: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        run("window.__reez&&window.__reez.send('\(kind)',\(String(decoding: data, as: UTF8.self)))")
+    }
+
     private func run(_ script: String) {
         guard loaded else { return }
         webView.evaluateJavaScript(script + ";0", completionHandler: nil)
@@ -92,6 +100,15 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
               framesPerSecond: frames, mouseMoves: moves, clicks: clicks,
               propertyListener: !!window.wallpaperPropertyListener, propertiesApplied: r.propsApplied || 0, paused: !!r.paused,
               audioListeners: (l.audio || []).length, mediaListeners: (l.properties || []).length,
+              media: (function (m) {
+                return {
+                  enabled: m.status ? !!m.status.enabled : null, title: m.properties ? m.properties.title : null,
+                  artist: m.properties ? m.properties.artist : null, state: m.playback ? m.playback.state : null,
+                  timeline: m.timeline ? Math.round(m.timeline.position) + '/' + Math.round(m.timeline.duration) : null,
+                  thumbnailKB: m.thumbnail && m.thumbnail.thumbnail ? Math.round(m.thumbnail.thumbnail.length / 1024) : 0,
+                  colors: m.thumbnail ? [m.thumbnail.primaryColor, m.thumbnail.secondaryColor, m.thumbnail.textColor] : null
+                };
+              })(r.last || {}),
               errors: r.errors || []
             }));
           }
@@ -153,6 +170,9 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
         let json = (try? JSONSerialization.data(withJSONObject: user)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
         run("window.__reez&&window.__reez.props(\(json),{fps:\(fpsLimit)})")
         if paused { run("window.__reez&&window.__reez.setPaused(true)") }
+        for (kind, payload) in mediaSnapshot() {
+            media(kind, payload)
+        }
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -170,17 +190,22 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
     // MARK: Brücke zur Seite
 
     /// Läuft vor den Skripten des Wallpapers. Stellt die Funktionen bereit, die Wallpaper Engine in die Seite legt:
-    /// Einstellungen (wallpaperPropertyListener) bekommen echte Werte, Audio- und Medien-Listener werden angenommen
-    /// und aufbewahrt, aber noch nicht bedient. Damit verhalten sich die Wallpaper wie in Wallpaper Engine ohne
-    /// laufende Musik, statt in ihren Browser-Vorschaumodus mit erfundenen Daten zu fallen.
+    /// Einstellungen (wallpaperPropertyListener) bekommen echte Werte, die Medien-Listener den laufenden Titel aus
+    /// `MediaCenter`. Der Audio-Listener wird angenommen und aufbewahrt, aber noch nicht bedient: die Wallpaper
+    /// verhalten sich wie in Wallpaper Engine ohne Tonsignal, statt in ihren Browser-Vorschaumodus zu fallen.
     private static let bridge = #"""
     (function () {
       'use strict';
       if (window.__reez) return;
 
       var listeners = { audio: [], status: [], properties: [], thumbnail: [], playback: [], timeline: [] };
+      var last = {};
       function register(kind) {
-        return function (fn) { if (typeof fn === 'function') listeners[kind].push(fn); };
+        return function (fn) {
+          if (typeof fn !== 'function') return;
+          listeners[kind].push(fn);
+          if (last[kind] !== undefined) setTimeout(function () { try { fn(last[kind]); } catch (e) { /* weiter */ } }, 0);
+        };
       }
       window.wallpaperRegisterAudioListener = register('audio');
       window.wallpaperRegisterMediaStatusListener = register('status');
@@ -216,10 +241,13 @@ final class WebWallpaperView: NSView, WallpaperContent, WKNavigationDelegate {
 
       var host = window.__reez = {
         listeners: listeners,
+        last: last,
         errors: errors,
         propsApplied: 0,
         paused: false,
         send: function (kind, payload) {
+          if (!listeners[kind]) return;
+          last[kind] = payload;
           listeners[kind].forEach(function (fn) { try { fn(payload); } catch (e) { /* weiter mit dem nächsten */ } });
         },
         props: function (user, general) {
