@@ -10,11 +10,34 @@ Wallpaper Engine, das es für macOS nicht gibt.
 scripts/build-app.sh --install
 ```
 
-Baut mit SwiftPM (Xcode-Kommandozeilenwerkzeuge reichen), bündelt `build/ReeZ Wallpapers.app`, kopiert sie nach
-`/Applications` und startet sie neu. Ohne `--install` wird nur gebaut. Signiert wird ad hoc, das reicht für den eigenen
-Mac. Das Symbol entsteht mit `swift scripts/make-icon.swift` (liegt fertig in `Resources/AppIcon.icns`).
+Baut mit SwiftPM (Xcode-Kommandozeilenwerkzeuge reichen) für Apple Silicon und Intel in einer Datei, bündelt
+`build/ReeZ Wallpapers.app`, kopiert sie nach `/Applications` und startet sie neu. Ohne `--install` wird nur gebaut.
+Signiert wird ad hoc. Das Symbol entsteht mit `swift scripts/make-icon.swift` (liegt fertig in `Resources/AppIcon.icns`).
 
-Ab macOS 13. Autostart schaltet man im Menü mit „Beim Anmelden starten“ ein.
+Ab macOS 13. Autostart schaltet man im Menü mit „Beim Anmelden starten“ ein. Die Oberfläche ist Englisch, auf deutsch
+eingestellten Macs Deutsch (`L10n.swift`: jeder Text steht als `L("English", "Deutsch")` an Ort und Stelle).
+
+## Weitergeben
+
+Die App steht als Download auf https://wallpapers.reez.cc/mac/ (Repo `ReeZYT/wallpapers`, lokal `Privat/lab`).
+
+```bash
+scripts/package.sh
+```
+
+packt `build/ReeZ-Wallpapers-mac.zip` und gibt Version, Größe und SHA-256 als JSON aus. Neue Fassung veröffentlichen:
+
+1. Version in `Resources/Info.plist` erhöhen (`CFBundleShortVersionString`).
+2. `scripts/package.sh > build/mac-app.json`
+3. Im Seiten-Repo: ZIP nach `public/downloads/`, JSON nach `src/data/mac-app.json`, dort `npm run check && npm run build
+   && npm test`, committen und nach `main` bringen (deployt automatisch).
+
+Installierte Apps fragen beim Abgleich `/mac/version.json` ab und zeigen im Menü einen Update-Hinweis, sobald dort eine
+höhere Version steht. Ein automatisches Update gibt es nicht.
+
+Die App ist nicht von Apple beglaubigt (notarisiert), dafür bräuchte es ein Apple-Entwicklerkonto. Auf fremden Macs
+blockiert macOS deshalb den ersten Start; die Download-Seite erklärt den Weg über Systemeinstellungen → Datenschutz &
+Sicherheit → „Dennoch öffnen“. Geprüft ist die App auf macOS 26 mit Apple Silicon, die Intel-Fassung über Rosetta.
 
 ## Woher die Wallpaper kommen
 
@@ -39,7 +62,8 @@ local/<name>/    eigene Projektordner oder Symlinks darauf
 ```
 
 - **Auf der Seite versteckte Wallpaper** stehen nicht in der Sitemap. Menü → Eigene Wallpaper → „Verstecktes Wallpaper
-  von der Seite …“ nimmt eines über seinen Slug dazu; es wird danach wie die anderen abgeglichen.
+  von der Seite …“ nimmt eines über seinen Slug dazu; es wird danach wie die anderen abgeglichen. Der Eintrag erscheint
+  nur, wenn schon eines eingetragen ist oder das Menü mit gedrückter Wahltaste (⌥) geöffnet wird.
 - **Eigene Ordner** (noch nicht hochgeladen, in Arbeit): Menü → Eigene Wallpaper → „Projektordner hinzufügen …“ legt
   einen Symlink unter `local/` an. Änderungen am Original zeigt „Wallpaper neu laden“.
 

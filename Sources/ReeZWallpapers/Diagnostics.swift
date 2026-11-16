@@ -9,7 +9,7 @@ enum Diagnostics {
     /// Aufrufende Seite: Anfrage an die laufende App schicken und auf den Bericht warten.
     static func runClient(arguments: [String]) -> Never {
         guard let index = arguments.firstIndex(of: "--diagnose"), arguments.count > index + 1 else {
-            print("Aufruf: ReeZWallpapers --diagnose <ordner> [--force]")
+            print("Usage: ReeZWallpapers --diagnose <folder> [--force]")
             exit(2)
         }
         let dir = URL(fileURLWithPath: arguments[index + 1]).standardizedFileURL
@@ -26,7 +26,7 @@ enum Diagnostics {
             print(text)
             exit(0)
         }
-        print("Keine Antwort. Läuft ReeZ Wallpapers?")
+        print("No answer. Is ReeZ Wallpapers running?")
         exit(1)
     }
 

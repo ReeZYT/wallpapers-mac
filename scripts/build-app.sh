@@ -8,8 +8,10 @@ cd "$(dirname "$0")/.."
 NAME="ReeZ Wallpapers"
 APP="build/$NAME.app"
 
-swift build -c release
-BIN="$(swift build -c release --show-bin-path)/ReeZWallpapers"
+# Apple Silicon und Intel in einer Datei
+ARCHS=(--arch arm64 --arch x86_64)
+swift build -c release "${ARCHS[@]}"
+BIN="$(swift build -c release "${ARCHS[@]}" --show-bin-path)/ReeZWallpapers"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

@@ -93,7 +93,7 @@ final class DisplayManager {
             var name = names[index]
             if let same = byName[name], same.count > 1, let position = same.firstIndex(of: index) {
                 if same.count == 2 {
-                    name += position == 0 ? " (links)" : " (rechts)"
+                    name += position == 0 ? L(" (left)", " (links)") : L(" (right)", " (rechts)")
                 } else {
                     name += " (\(position + 1))"
                 }

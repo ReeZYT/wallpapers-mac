@@ -126,12 +126,15 @@ final class Library {
         case http(Int, String)
         case badArchive(String)
         case unsupported(String)
+        /// Die Seite kennt unter diesem Namen kein Wallpaper (z. B. eine andere Seite aus der Sitemap).
+        case notAWallpaper(String)
 
         var errorDescription: String? {
             switch self {
             case .http(let code, let what): return "\(what): HTTP \(code)"
-            case .badArchive(let slug): return "\(slug): ZIP enthält keinen Projektordner mit project.json"
-            case .unsupported(let slug): return "\(slug): Typ wird nicht unterstützt"
+            case .badArchive(let slug): return L("\(slug): the ZIP has no project folder with a project.json", "\(slug): ZIP enthält keinen Projektordner mit project.json")
+            case .unsupported(let slug): return L("\(slug): this wallpaper type is not supported", "\(slug): Typ wird nicht unterstützt")
+            case .notAWallpaper(let slug): return L("The site has no wallpaper called \(slug).", "Auf der Seite gibt es kein Wallpaper namens \(slug).")
             }
         }
     }
@@ -156,6 +159,7 @@ final class Library {
         isSyncing = true
         onChange?()
         var problems: [String] = []
+        await checkForAppUpdate()
         do {
             // Öffentliche Liste, dahinter die von Hand hinzugefügten (auf der Seite versteckten) Wallpaper
             let listed = try await fetchSlugs()
@@ -166,8 +170,8 @@ final class Library {
             for slug in slugs {
                 do {
                     try await syncOne(slug)
-                } catch SyncError.http(404, _) where !listed.contains(slug) {
-                    // Verstecktes Wallpaper gibt es auf der Seite nicht mehr
+                } catch SyncError.notAWallpaper {
+                    // Kein Wallpaper: eine andere Seite aus der Sitemap (z. B. /mac/) oder ein gelöschtes verstecktes
                     Settings.extraSlugs.removeAll { $0 == slug }
                     slugs.removeAll { $0 == slug }
                 } catch {
@@ -187,6 +191,18 @@ final class Library {
         isSyncing = false
         reloadFromDisk()
         onChange?()
+    }
+
+    /// Neuere Fassung der App auf der Seite? `/mac/version.json` nennt die aktuelle; das Menü zeigt dann einen Hinweis.
+    private(set) var availableUpdate: String?
+
+    private func checkForAppUpdate() async {
+        guard let (data, response) = try? await session.data(from: Self.site.appendingPathComponent("mac/version.json")),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let latest = json["version"] as? String,
+              let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else { return }
+        availableUpdate = latest.compare(current, options: .numeric) == .orderedDescending ? latest : nil
     }
 
     private func fetchSlugs() async throws -> [String] {
@@ -210,6 +226,7 @@ final class Library {
         let files = Self.site.appendingPathComponent("files").appendingPathComponent(slug)
         let (metaData, metaResponse) = try await session.data(from: files.appendingPathComponent("meta.json"))
         let metaCode = (metaResponse as? HTTPURLResponse)?.statusCode ?? 0
+        if metaCode == 404 { throw SyncError.notAWallpaper(slug) }
         guard metaCode == 200 else { throw SyncError.http(metaCode, "\(slug)/meta.json") }
         let meta = try JSONDecoder().decode(SiteMeta.self, from: metaData)
         guard meta.slug == slug, ["web", "video"].contains(meta.type) else { throw SyncError.unsupported(slug) }
@@ -291,7 +308,10 @@ final class Library {
         let slug = (URL(string: trimmed)?.host != nil ? URL(string: trimmed)?.pathComponents.first { $0 != "/" } : nil) ?? trimmed
         guard Self.isSlug(slug) else {
             throw NSError(domain: "ReeZWallpapers", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "Das ist kein Wallpaper-Name der Seite. Gemeint ist der Teil hinter wallpapers.reez.cc/, z. B. nishiki-interactive-koi-pond."
+                NSLocalizedDescriptionKey: L(
+                    "That is not a wallpaper name from the site. It is the part after wallpapers.reez.cc/, for example nishiki-interactive-koi-pond.",
+                    "Das ist kein Wallpaper-Name der Seite. Gemeint ist der Teil hinter wallpapers.reez.cc/, z. B. nishiki-interactive-koi-pond."
+                )
             ])
         }
         try await syncOne(slug)
@@ -312,7 +332,10 @@ final class Library {
         let source = folder.resolvingSymlinksInPath()
         guard let project = ProjectFile(root: source), project.kind != nil else {
             throw NSError(domain: "ReeZWallpapers", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "In diesem Ordner liegt keine project.json eines Web- oder Video-Wallpapers."
+                NSLocalizedDescriptionKey: L(
+                    "This folder has no project.json of a web or video wallpaper.",
+                    "In diesem Ordner liegt keine project.json eines Web- oder Video-Wallpapers."
+                )
             ])
         }
         var name = source.lastPathComponent

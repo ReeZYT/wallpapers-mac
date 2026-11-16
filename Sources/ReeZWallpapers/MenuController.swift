@@ -54,12 +54,12 @@ final class MenuController: NSObject, NSMenuDelegate {
         let selections = current.map { displays.selection(for: $0.uuid) ?? Settings.noneID }
 
         if library.wallpapers.isEmpty {
-            menu.addItem(info(library.isSyncing ? "Wallpaper werden geladen …" : "Noch keine Wallpaper geladen"))
+            menu.addItem(info(library.isSyncing ? L("Loading wallpapers…", "Wallpaper werden geladen …") : L("No wallpapers loaded yet", "Noch keine Wallpaper geladen")))
         } else if current.count <= 1 {
             addWallpaperItems(to: menu, selected: Set(selections), allSame: true) { [displays] id in displays.setAll(id) }
         } else {
             let allSame = Set(selections).count == 1
-            let all = NSMenuItem(title: "Alle Monitore", action: nil, keyEquivalent: "")
+            let all = NSMenuItem(title: L("All displays", "Alle Monitore"), action: nil, keyEquivalent: "")
             all.submenu = NSMenu()
             addWallpaperItems(to: all.submenu!, selected: Set(selections), allSame: allSame) { [displays] id in displays.setAll(id) }
             menu.addItem(all)
@@ -72,24 +72,24 @@ final class MenuController: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        menu.addItem(ActionItem("Pausieren", state: displays.userPaused ? .on : .off) { [displays] in
+        menu.addItem(ActionItem(L("Pause", "Pausieren"), state: displays.userPaused ? .on : .off) { [displays] in
             displays.userPaused.toggle()
         })
-        let fps = NSMenuItem(title: "Bildrate", action: nil, keyEquivalent: "")
+        let fps = NSMenuItem(title: L("Frame rate", "Bildrate"), action: nil, keyEquivalent: "")
         fps.submenu = NSMenu()
-        for (label, value) in [("Unbegrenzt", 0), ("60 Bilder/s", 60), ("30 Bilder/s", 30), ("24 Bilder/s", 24)] {
+        for (label, value) in [(L("Unlimited", "Unbegrenzt"), 0), (L("60 fps", "60 Bilder/s"), 60), (L("30 fps", "30 Bilder/s"), 30), (L("24 fps", "24 Bilder/s"), 24)] {
             fps.submenu?.addItem(ActionItem(label, state: Settings.fpsLimit == value ? .on : .off) { [displays] in
                 Settings.fpsLimit = value
                 displays.applyFPSLimit()
             })
         }
         menu.addItem(fps)
-        menu.addItem(ActionItem("Maus und Klicks an Wallpaper weitergeben", state: Settings.mouseEnabled ? .on : .off) { [mouse] in
+        menu.addItem(ActionItem(L("Pass mouse and clicks to wallpapers", "Maus und Klicks an Wallpaper weitergeben"), state: Settings.mouseEnabled ? .on : .off) { [mouse] in
             Settings.mouseEnabled.toggle()
             mouse.setEnabled(Settings.mouseEnabled)
         })
 
-        menu.addItem(ActionItem("Laufenden Titel an Wallpaper geben (Spotify, Apple Music)", state: Settings.mediaEnabled ? .on : .off) { [displays] in
+        menu.addItem(ActionItem(L("Show the current track in wallpapers (Spotify, Apple Music)", "Laufenden Titel an Wallpaper geben (Spotify, Apple Music)"), state: Settings.mediaEnabled ? .on : .off) { [displays] in
             Settings.mediaEnabled.toggle()
             displays.media.setEnabled(Settings.mediaEnabled)
         })
@@ -101,27 +101,39 @@ final class MenuController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         menu.addItem(info(syncStatus()))
-        menu.addItem(ActionItem("Jetzt mit wallpapers.reez.cc abgleichen") { [library] in
+        menu.addItem(ActionItem(L("Check wallpapers.reez.cc now", "Jetzt mit wallpapers.reez.cc abgleichen")) { [library] in
             Task { await library.sync() }
         })
-        menu.addItem(ActionItem("Wallpaper neu laden") { [library, displays] in
+        menu.addItem(ActionItem(L("Reload wallpapers", "Wallpaper neu laden")) { [library, displays] in
             library.reloadFromDisk()
             displays.refresh(force: true)
         })
-        let own = NSMenuItem(title: "Eigene Wallpaper", action: nil, keyEquivalent: "")
+        let own = NSMenuItem(title: L("My own wallpapers", "Eigene Wallpaper"), action: nil, keyEquivalent: "")
         own.submenu = NSMenu()
-        own.submenu?.addItem(ActionItem("Projektordner hinzufügen …") { [weak self] in self?.addFolder() })
-        own.submenu?.addItem(ActionItem("Verstecktes Wallpaper von der Seite …") { [weak self] in self?.addHidden() })
-        own.submenu?.addItem(ActionItem("Ordner im Finder zeigen") { [library] in
+        own.submenu?.addItem(ActionItem(L("Add project folder…", "Projektordner hinzufügen …")) { [weak self] in self?.addFolder() })
+        // Für Wallpaper, die auf der Seite noch versteckt sind: nur sichtbar, wenn schon eines eingetragen ist
+        // oder das Menü mit gedrückter Wahltaste geöffnet wird
+        if !Settings.extraSlugs.isEmpty || NSEvent.modifierFlags.contains(.option) {
+            own.submenu?.addItem(ActionItem(L("Add hidden wallpaper from the site…", "Verstecktes Wallpaper von der Seite …")) { [weak self] in self?.addHidden() })
+        }
+        own.submenu?.addItem(ActionItem(L("Show folder in Finder", "Ordner im Finder zeigen")) { [library] in
             NSWorkspace.shared.open(library.localDir)
         })
         menu.addItem(own)
 
         menu.addItem(.separator())
-        menu.addItem(ActionItem("Beim Anmelden starten", state: SMAppService.mainApp.status == .enabled ? .on : .off) { [weak self] in
+        if let version = library.availableUpdate {
+            menu.addItem(ActionItem(L("Update available: version \(version)…", "Update verfügbar: Version \(version) …")) {
+                NSWorkspace.shared.open(Library.site.appendingPathComponent("mac/"))
+            })
+        }
+        menu.addItem(ActionItem(L("Open wallpapers.reez.cc", "wallpapers.reez.cc öffnen")) {
+            NSWorkspace.shared.open(Library.site)
+        })
+        menu.addItem(ActionItem(L("Start at login", "Beim Anmelden starten"), state: SMAppService.mainApp.status == .enabled ? .on : .off) { [weak self] in
             self?.toggleLoginItem()
         })
-        let quit = NSMenuItem(title: "ReeZ Wallpapers beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L("Quit ReeZ Wallpapers", "ReeZ Wallpapers beenden"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
 
@@ -145,7 +157,7 @@ final class MenuController: NSObject, NSMenuDelegate {
             menu.addItem(ActionItem(wallpaper.title, state: state(wallpaper.id), image: thumbnail(wallpaper)) { choose(wallpaper.id) })
         }
         menu.addItem(.separator())
-        menu.addItem(ActionItem("Aus (macOS-Hintergrund)", state: state(Settings.noneID)) { choose(Settings.noneID) })
+        menu.addItem(ActionItem(L("Off (macOS wallpaper)", "Aus (macOS-Hintergrund)"), state: state(Settings.noneID)) { choose(Settings.noneID) })
     }
 
     private func thumbnail(_ wallpaper: Wallpaper) -> NSImage? {
@@ -166,23 +178,23 @@ final class MenuController: NSObject, NSMenuDelegate {
     }
 
     private func syncStatus() -> String {
-        if library.isSyncing { return "Abgleich läuft …" }
+        if library.isSyncing { return L("Checking the site…", "Abgleich läuft …") }
         if let error = library.lastError {
-            return "Abgleich fehlgeschlagen: " + String(error.prefix(80))
+            return L("Check failed: ", "Abgleich fehlgeschlagen: ") + String(error.prefix(80))
         }
-        guard let date = library.lastSync else { return "Noch nicht abgeglichen" }
+        guard let date = library.lastSync else { return L("Not checked yet", "Noch nicht abgeglichen") }
         let formatter = DateFormatter()
         formatter.dateStyle = Calendar.current.isDateInToday(date) ? .none : .short
         formatter.timeStyle = .short
-        return "Zuletzt abgeglichen: " + formatter.string(from: date)
+        return L("Last checked: ", "Zuletzt abgeglichen: ") + formatter.string(from: date)
     }
 
     private func addFolder() {
         NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
-        panel.title = "Projektordner eines Wallpapers wählen"
-        panel.message = "Der Ordner mit project.json, wie Wallpaper Engine ihn anlegt."
-        panel.prompt = "Hinzufügen"
+        panel.title = L("Choose a wallpaper project folder", "Projektordner eines Wallpapers wählen")
+        panel.message = L("The folder with project.json, as created by Wallpaper Engine.", "Der Ordner mit project.json, wie Wallpaper Engine ihn anlegt.")
+        panel.prompt = L("Add", "Hinzufügen")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
@@ -190,20 +202,20 @@ final class MenuController: NSObject, NSMenuDelegate {
         do {
             _ = try library.addLocalFolder(folder)
         } catch {
-            alert("Ordner nicht hinzugefügt", error.localizedDescription)
+            alert(L("Folder not added", "Ordner nicht hinzugefügt"), error.localizedDescription)
         }
     }
 
     private func addHidden() {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "Verstecktes Wallpaper hinzufügen"
-        alert.informativeText = "Adresse der Detailseite oder der Name hinter wallpapers.reez.cc/. Das Wallpaper wird ab jetzt wie die öffentlichen mit abgeglichen."
+        alert.messageText = L("Add a hidden wallpaper", "Verstecktes Wallpaper hinzufügen")
+        alert.informativeText = L("The address of its page, or the name after wallpapers.reez.cc/. From now on it is kept up to date like the public ones.", "Adresse der Detailseite oder der Name hinter wallpapers.reez.cc/. Das Wallpaper wird ab jetzt wie die öffentlichen mit abgeglichen.")
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
         field.placeholderString = "singularity-interactive-black-hole"
         alert.accessoryView = field
-        alert.addButton(withTitle: "Hinzufügen")
-        alert.addButton(withTitle: "Abbrechen")
+        alert.addButton(withTitle: L("Add", "Hinzufügen"))
+        alert.addButton(withTitle: L("Cancel", "Abbrechen"))
         alert.window.initialFirstResponder = field
         guard alert.runModal() == .alertFirstButtonReturn, !field.stringValue.isEmpty else { return }
         let input = field.stringValue
@@ -211,7 +223,7 @@ final class MenuController: NSObject, NSMenuDelegate {
             do {
                 _ = try await library.addSiteWallpaper(input)
             } catch {
-                self?.alert("Wallpaper nicht hinzugefügt", error.localizedDescription)
+                self?.alert(L("Wallpaper not added", "Wallpaper nicht hinzugefügt"), error.localizedDescription)
             }
         }
     }
@@ -224,7 +236,7 @@ final class MenuController: NSObject, NSMenuDelegate {
                 try SMAppService.mainApp.register()
             }
         } catch {
-            alert("Anmeldeobjekt nicht geändert", error.localizedDescription)
+            alert(L("Login item not changed", "Anmeldeobjekt nicht geändert"), error.localizedDescription)
         }
     }
 
