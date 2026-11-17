@@ -156,6 +156,13 @@ Deshalb liegt in der App ein Bildschirmschoner (`Sources/ReeZWallpapersSaver`, B
   liest `saver.json` (Auswahl je Monitor, Pfade; die App schreibt sie bei jeder Änderung) und die Projektordner direkt
   aus `~/Library/Application Support/ReeZ Wallpapers`. Seine Ansichten sind dieselben wie in der App: die gemeinsamen
   Quelldateien sind per Symlink in das zweite SwiftPM-Ziel eingehängt.
+- Welcher Monitor: Im Prozess des Bildschirmschoners ist `window.screen` nur für den Hauptbildschirm gesetzt, für
+  externe Monitore leer. Die Lage des Fensters ist aber da, allerdings in Quartz-Koordinaten (Ursprung oben links;
+  ein Monitor, den AppKit bei `1728,932` führt, steht dort bei `1728,-895`). `SaverView.resolve` nimmt deshalb erst
+  `window.screen`, wenn die Größe passt, dann die Lage gegen `CGDisplayBounds`, dann gegen die AppKit-Rahmen, und erst
+  nach einer Sekunde einen freien Monitor passender Größe. Ohne das bekam jeder externe Monitor das Wallpaper „für
+  alle“, und gleich große Monitore ließen sich nicht auseinanderhalten. Jede Ansicht schreibt ihre Zuordnung ins
+  Protokoll (`subsystem == "cc.reez.wallpapers.saver"`).
 - WebKit hält Seiten in verdeckten Fenstern an, und die Fenster eines Bildschirmschoners gelten ihm als verdeckt
   (macOS zeigt sie über einen eigenen Prozess an). Im Bildschirmschoner ist diese Erkennung deshalb abgeschaltet;
   sonst sieht man nur die Hintergrundfarbe der Seite.
